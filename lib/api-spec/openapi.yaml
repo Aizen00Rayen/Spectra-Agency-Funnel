@@ -3,20 +3,25 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Spectra Agency public funnel and secure admin operations
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: public
+    description: Public funnel operations
+  - name: admin
+    description: Authenticated admin operations
+  - name: storage
+    description: Authenticated upload operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +29,335 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /public/config:
+    get:
+      operationId: getPublicConfig
+      tags: [public]
+      summary: Get published funnel configuration
+      responses:
+        "200":
+          description: Published video and public booking configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicConfig"
+  /leads:
+    post:
+      operationId: createLead
+      tags: [public]
+      summary: Submit a consultation lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInput"
+      responses:
+        "201":
+          description: Lead created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+  /public/availability:
+    get:
+      operationId: getPublicAvailability
+      tags: [public]
+      summary: Get available consultation slots
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Available slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailabilitySlot"
+  /bookings:
+    post:
+      operationId: createBooking
+      tags: [public]
+      summary: Request a consultation slot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingInput"
+      responses:
+        "201":
+          description: Booking request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+  /admin/summary:
+    get:
+      operationId: getAdminSummary
+      tags: [admin]
+      summary: Get admin dashboard summary
+      responses:
+        "200":
+          description: Summary metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSummary"
+  /admin/leads:
+    get:
+      operationId: listAdminLeads
+      tags: [admin]
+      summary: List consultation leads
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/LeadStatus"
+      responses:
+        "200":
+          description: Leads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lead"
+  /admin/leads/{id}/status:
+    patch:
+      operationId: updateLeadStatus
+      tags: [admin]
+      summary: Move a lead through the pipeline
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadStatusUpdate"
+      responses:
+        "200":
+          description: Updated lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+  /admin/video:
+    get:
+      operationId: getAdminVideo
+      tags: [admin]
+      summary: Get the current VSL
+      responses:
+        "200":
+          description: Current video
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoAsset"
+    post:
+      operationId: createVideoAsset
+      tags: [admin]
+      summary: Save uploaded VSL metadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoAssetInput"
+      responses:
+        "201":
+          description: Video saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoAsset"
+  /admin/video/{id}/publish:
+    patch:
+      operationId: publishVideoAsset
+      tags: [admin]
+      summary: Publish a VSL to the public funnel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Published video
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoAsset"
+  /admin/availability:
+    get:
+      operationId: listAvailabilityRules
+      tags: [admin]
+      summary: List weekly availability rules
+      responses:
+        "200":
+          description: Availability rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailabilityRule"
+    post:
+      operationId: createAvailabilityRule
+      tags: [admin]
+      summary: Add a weekly availability rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvailabilityRuleInput"
+      responses:
+        "201":
+          description: Availability rule created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailabilityRule"
+  /admin/availability/{id}:
+    delete:
+      operationId: deleteAvailabilityRule
+      tags: [admin]
+      summary: Remove a weekly availability rule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Rule deleted
+  /admin/bookings:
+    get:
+      operationId: listAdminBookings
+      tags: [admin]
+      summary: List consultation bookings
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/BookingStatus"
+      responses:
+        "200":
+          description: Bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+  /admin/bookings/{id}/approve:
+    patch:
+      operationId: approveBooking
+      tags: [admin]
+      summary: Approve a booking and create its calendar event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Approved booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+  /admin/bookings/{id}/status:
+    patch:
+      operationId: updateBookingStatus
+      tags: [admin]
+      summary: Update booking status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingStatusUpdate"
+      responses:
+        "200":
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+  /admin/calendar/status:
+    get:
+      operationId: getCalendarStatus
+      tags: [admin]
+      summary: Check Google Calendar connection
+      responses:
+        "200":
+          description: Calendar connection status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarStatus"
+  /admin/calendar/calendars:
+    get:
+      operationId: listCalendars
+      tags: [admin]
+      summary: List connected Google calendars
+      responses:
+        "200":
+          description: Calendars
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CalendarSummary"
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a private upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadRequest"
+      responses:
+        "200":
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
 components:
   schemas:
     HealthStatus:
@@ -31,6 +365,185 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
+    LeadStatus:
+      type: string
+      enum: [registered, reviewing, approved, refused, scheduled, met, fit, not_fit, nurture]
+    BookingStatus:
+      type: string
+      enum: [requested, approved, cancelled, completed, no_show]
+    Lead:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        company: { type: string }
+        email: { type: string, format: email }
+        phone: { type: ["string", "null"] }
+        businessType: { type: ["string", "null"] }
+        budget: { type: ["string", "null"] }
+        projectDescription: { type: string }
+        interestedServices:
+          type: array
+          items: { type: string }
+        status:
+          $ref: "#/components/schemas/LeadStatus"
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, name, company, email, projectDescription, interestedServices, status, createdAt, updatedAt]
+    LeadInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2 }
+        company: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+        phone: { type: string }
+        businessType: { type: string }
+        budget: { type: string }
+        projectDescription: { type: string, minLength: 10 }
+        interestedServices:
+          type: array
+          items: { type: string }
+          minItems: 1
+      required: [name, company, email, projectDescription, interestedServices]
+    LeadStatusUpdate:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/LeadStatus"
+      required: [status]
+    VideoAsset:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        objectPath: { type: string }
+        mimeType: { type: string }
+        sizeBytes: { type: integer }
+        isPublished: { type: boolean }
+        createdAt: { type: string, format: date-time }
+      required: [id, title, objectPath, mimeType, sizeBytes, isPublished, createdAt]
+    VideoAssetInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        objectPath: { type: string, minLength: 1 }
+        mimeType: { type: string }
+        sizeBytes: { type: integer, minimum: 1 }
+      required: [title, objectPath, mimeType, sizeBytes]
+    AvailabilityRule:
+      type: object
+      properties:
+        id: { type: integer }
+        weekday: { type: integer, minimum: 0, maximum: 6 }
+        startTime: { type: string, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$" }
+        endTime: { type: string, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$" }
+        timezone: { type: string }
+        enabled: { type: boolean }
+      required: [id, weekday, startTime, endTime, timezone, enabled]
+    AvailabilityRuleInput:
+      type: object
+      properties:
+        weekday: { type: integer, minimum: 0, maximum: 6 }
+        startTime: { type: string, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$" }
+        endTime: { type: string, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$" }
+        timezone: { type: string }
+        enabled: { type: boolean }
+      required: [weekday, startTime, endTime, timezone]
+    AvailabilitySlot:
+      type: object
+      properties:
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        timezone: { type: string }
+      required: [startsAt, endsAt, timezone]
+    Booking:
+      type: object
+      properties:
+        id: { type: integer }
+        leadId: { type: integer }
+        clientName: { type: string }
+        clientEmail: { type: string, format: email }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        timezone: { type: string }
+        status:
+          $ref: "#/components/schemas/BookingStatus"
+        meetingUrl: { type: ["string", "null"], format: uri }
+        calendarEventId: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+      required: [id, leadId, clientName, clientEmail, startsAt, endsAt, timezone, status, createdAt]
+    BookingInput:
+      type: object
+      properties:
+        leadId: { type: integer }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        timezone: { type: string }
+      required: [leadId, startsAt, endsAt, timezone]
+    BookingStatusUpdate:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/BookingStatus"
+      required: [status]
+    AdminSummary:
+      type: object
+      properties:
+        totalLeads: { type: integer }
+        registered: { type: integer }
+        awaitingApproval: { type: integer }
+        approved: { type: integer }
+        upcomingMeetings: { type: integer }
+        publishedVideo:
+          type: boolean
+        calendarConnected:
+          type: boolean
+      required: [totalLeads, registered, awaitingApproval, approved, upcomingMeetings, publishedVideo, calendarConnected]
+    PublicVideo:
+      type: object
+      properties:
+        title: { type: string }
+        url: { type: string, format: uri }
+      required: [title, url]
+    PublicConfig:
+      type: object
+      properties:
+        video:
+          anyOf:
+            - $ref: "#/components/schemas/PublicVideo"
+            - type: "null"
+        bookingDurationMinutes: { type: integer }
+        timezone: { type: string }
+      required: [video, bookingDurationMinutes, timezone]
+    CalendarStatus:
+      type: object
+      properties:
+        connected: { type: boolean }
+        provider: { type: string }
+        calendarId: { type: ["string", "null"] }
+      required: [connected, provider, calendarId]
+    CalendarSummary:
+      type: object
+      properties:
+        id: { type: string }
+        summary: { type: string }
+        primary: { type: boolean }
+        accessRole: { type: string }
+      required: [id, summary, primary, accessRole]
+    UploadRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        size: { type: integer, minimum: 1, maximum: 524288000 }
+        contentType:
+          type: string
+          enum: [video/mp4, video/webm, video/quicktime]
+      required: [name, size, contentType]
+    UploadResponse:
+      type: object
+      properties:
+        uploadURL: { type: string, format: uri }
+        objectPath: { type: string }
+      required: [uploadURL, objectPath]
 

@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { ClerkProvider, SignIn, SignUp, useAuth, useClerk } from '@clerk/react';
+import { publishableKeyFromHost } from '@clerk/react/internal';
+import { shadcn } from '@clerk/themes';
+import { Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
+import { AdminAvailability, AdminBookings, AdminLeads, AdminOverview, AdminVideo } from '@/pages/admin';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, Check, ChevronDown,
   Clock3, Globe2, Menu, Play, ShieldCheck, Sparkles, X, Zap,
@@ -110,7 +115,7 @@ const copy = {
   },
 } as const;
 
-function App() {
+function PublicHome() {
   const [lang, setLang] = useState<Lang>('en');
   const [menuOpen, setMenuOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -256,6 +261,132 @@ function Field({ label, id, type = 'text' }: { label: string; id: string; type?:
 
 function FooterCol({ title, items, onSelect }: { title: string; items: readonly string[]; onSelect: (index: number) => void }) {
   return <div><span className="eyebrow">{title}</span><div className="mt-4 flex flex-col gap-3">{items.map((item, i) => <button key={item} onClick={() => onSelect(i)} className="w-fit text-start text-xs text-[#8491a2] transition hover:text-[#dce7f4]" data-testid={`link-footer-${i}`}>{item}</button>)}</div></div>;
+}
+
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+);
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+if (!clerkPubKey) {
+  throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in .env file');
+}
+
+const clerkAppearance = {
+  theme: shadcn,
+  cssLayerName: 'clerk',
+  options: {
+    logoPlacement: 'inside' as const,
+    logoLinkUrl: basePath || '/',
+    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+  },
+  variables: {
+    colorPrimary: '#86b7f2',
+    colorForeground: '#dce6f1',
+    colorMutedForeground: '#8391a2',
+    colorDanger: '#df929b',
+    colorBackground: '#111820',
+    colorInput: '#0b1118',
+    colorInputForeground: '#e3edf8',
+    colorNeutral: '#354353',
+    fontFamily: 'Manrope, sans-serif',
+    borderRadius: '0.65rem',
+  },
+  elements: {
+    rootBox: 'w-full flex justify-center',
+    cardBox: 'bg-[#111820] rounded-2xl w-[440px] max-w-full overflow-hidden border border-white/[.1]',
+    card: '!shadow-none !border-0 !bg-transparent !rounded-none',
+    footer: '!shadow-none !border-0 !bg-transparent !rounded-none',
+    headerTitle: 'text-[#eaf1f8] tracking-[-.04em]',
+    headerSubtitle: 'text-[#8998aa]',
+    socialButtonsBlockButtonText: 'text-[#dbe7f3]',
+    formFieldLabel: 'text-[#aebdcd]',
+    footerActionLink: 'text-[#9bc8fa]',
+    footerActionText: 'text-[#8492a3]',
+    dividerText: 'text-[#728195]',
+    identityPreviewEditButton: 'text-[#9bc8fa]',
+    formFieldSuccessText: 'text-[#89caa9]',
+    alertText: 'text-[#dfa2a9]',
+    logoBox: 'w-12 h-12',
+    logoImage: 'rounded-xl',
+    socialButtonsBlockButton: 'border-white/[.13] bg-white/[.03] hover:bg-white/[.07]',
+    formButtonPrimary: 'bg-[#dcecff] text-[#09101a] hover:bg-[#a8cdf9]',
+    formFieldInput: 'border-white/[.14] bg-[#0b1118] text-[#e3edf8]',
+    footerAction: 'border-white/[.08]',
+    dividerLine: 'bg-white/[.12]',
+    alert: 'border-[#df929b]/30 bg-[#df929b]/[.08]',
+    otpCodeFieldInput: 'border-white/[.14] bg-[#0b1118] text-[#e3edf8]',
+    formFieldRow: 'text-[#dce6f1]',
+    main: 'bg-transparent',
+  },
+};
+
+function ClerkQueryBoundary() {
+  const { addListener } = useClerk();
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const unsubscribe = addListener(({ user }) => {
+      if (user) queryClient.clear();
+    });
+    return unsubscribe;
+  }, [addListener, queryClient]);
+  return null;
+}
+
+function SignInPage() {
+  return <div className="admin-auth-page"><div className="admin-auth-orbit" /><div className="admin-auth-intro"><img src="/logo.svg" alt="Spectra" /><p className="admin-kicker">Spectra / secure workspace</p><h1>The room where<br /><span>good work moves.</span></h1><p>Private access for the Spectra studio team. Clear decisions, handled carefully.</p></div><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>;
+}
+
+function SignUpPage() {
+  return <div className="admin-auth-page"><div className="admin-auth-orbit" /><div className="admin-auth-intro"><img src="/logo.svg" alt="Spectra" /><p className="admin-kicker">Spectra / secure workspace</p><h1>Make the next<br /><span>move deliberate.</span></h1><p>Create an authenticated studio workspace account to continue.</p></div><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>;
+}
+
+function HomeRoute() {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return <div className="admin-loading-screen"><span className="admin-loader-mark" /><p>Loading Spectra</p></div>;
+  return isSignedIn ? <Redirect to="/admin" /> : <PublicHome />;
+}
+
+function AdminRoute() {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return <div className="admin-loading-screen"><span className="admin-loader-mark" /><p>Verifying workspace access</p></div>;
+  if (!isSignedIn) return <Redirect to="/sign-in" />;
+  return <Switch><Route path="/admin/leads" component={AdminLeads} /><Route path="/admin/video" component={AdminVideo} /><Route path="/admin/availability" component={AdminAvailability} /><Route path="/admin/bookings" component={AdminBookings} /><Route path="/admin" component={AdminOverview} /></Switch>;
+}
+
+function ClerkRoutes() {
+  const [, setLocation] = useLocation();
+  const stripBase = (path: string) => basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path;
+  return <ClerkProvider
+    publishableKey={clerkPubKey}
+    proxyUrl={clerkProxyUrl}
+    appearance={clerkAppearance}
+    signInUrl={`${basePath}/sign-in`}
+    signUpUrl={`${basePath}/sign-up`}
+    localization={{
+      signIn: { start: { title: 'Welcome back', subtitle: 'Sign in to access the Spectra operating room' } },
+      signUp: { start: { title: 'Join the studio workspace', subtitle: 'Create your secure Spectra account' } },
+    }}
+    routerPush={(to) => setLocation(stripBase(to))}
+    routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
+  >
+    <QueryClientProvider client={queryClient}>
+      <ClerkQueryBoundary />
+      <Switch>
+        <Route path="/" component={HomeRoute} />
+        <Route path="/sign-in/*?" component={SignInPage} />
+        <Route path="/sign-up/*?" component={SignUpPage} />
+        <Route path="/admin/*?" component={AdminRoute} />
+        <Route component={() => <Redirect to="/" />} />
+      </Switch>
+    </QueryClientProvider>
+  </ClerkProvider>;
+}
+
+function App() {
+  return <WouterRouter base={basePath}><ClerkRoutes /></WouterRouter>;
 }
 
 export default App;

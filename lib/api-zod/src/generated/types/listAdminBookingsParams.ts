@@ -5,7 +5,8 @@
  * Spectra Agency public funnel and secure admin operations
  * OpenAPI spec version: 0.1.0
  */
+import type { BookingStatus } from './bookingStatus';
 
-export interface HealthStatus {
-  status: string;
-}
+export type ListAdminBookingsParams = {
+status?: BookingStatus;
+};
