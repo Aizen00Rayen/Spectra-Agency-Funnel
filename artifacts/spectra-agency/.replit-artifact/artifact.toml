@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Spectra Agency"
+description = "A premium multilingual lead-generation landing page for Spectra Agency, guiding visitors from a strategic training lesson to a discovery consultation."
+version = "1.0.0"
+id = "artifacts/spectra-agency"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19197
+
+[services.development]
+run = "pnpm --filter @workspace/spectra-agency run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/spectra-agency", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/spectra-agency/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19197"
+BASE_PATH = "/"
