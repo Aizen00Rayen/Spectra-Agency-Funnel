@@ -8,13 +8,13 @@ import { ClerkProvider, SignIn, SignUp, useAuth, useClerk } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
-import { AdminAvailability, AdminBookings, AdminLeads, AdminOverview, AdminTestimonials, AdminVideo } from '@/pages/admin';
+import { AdminAvailability, AdminBookings, AdminLeads, AdminOverview, AdminPortfolio, AdminTestimonials, AdminVideo } from '@/pages/admin';
 import { AdminLangProvider, type AdminLang } from '@/pages/admin-i18n';
 import { ProtectedVideoPlayer } from '@/components/ProtectedVideoPlayer';
 import { setAuthTokenGetter, useGetPublicConfig } from '@workspace/api-client-react';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, Calendar, CalendarDays, Check, ChevronDown,
-  Clock3, Globe2, Lock, Menu, MessageSquareQuote, Play, RefreshCw, ShieldCheck, Sparkles, User, Video, Volume2, VolumeX, X, Zap,
+  Clock3, ExternalLink, Globe2, Lock, Menu, MessageSquareQuote, Play, RefreshCw, ShieldCheck, Sparkles, User, Video, Volume2, VolumeX, X, Zap,
 } from 'lucide-react';
 
 const queryClient = new QueryClient();
@@ -63,10 +63,16 @@ const copy = {
     formKicker: 'Make the next move',
     formTitle: 'Let’s discuss what you’re building.',
     formBody: 'Tell us enough to start a useful conversation. We reply within one business day.',
-    formFields: ['Your name', 'Company', 'Work email', 'Phone (optional)', 'What are you looking to build?'],
+    formFields: ['Your name', 'Company', 'Work email', 'Phone number *', 'What are you looking to build?'],
     formButton: 'Request my consultation',
     formSuccess: 'Your note is with the team. We’ll be in touch within one business day.',
     services: ['Website', 'Mobile app', 'CRM / ERP', 'Automation', 'AI system', 'Brand / growth'],
+    showcaseKicker: 'Selected Deployments',
+    showcaseTitle: 'Websites & digital systems we engineered.',
+    showcaseBody: 'Interactive scrollable previews of live client digital platforms built with precision by Spectra.',
+    showcaseModalTitle: 'Consultation Required',
+    showcaseModalBody: 'To access live client deployments and full interactive case studies, please complete our quick consultation form first.',
+    showcaseModalBtn: 'Complete Consultation Form',
     scheduleKicker: 'Choose your next step',
     scheduleTitle: 'Find a time that works.',
     scheduleBody: 'A focused 30-minute conversation. No pitch deck, no pressure.',
@@ -95,7 +101,13 @@ const copy = {
     methodKicker: 'La méthode Spectra', methodTitle: 'Moins de réunions. De meilleures décisions.', methodBody: 'Un processus volontairement senior qui garde l’élan visible à chaque étape.', steps: [['01', 'Découvrir', 'Comprendre la vérité commerciale avant de toucher à un pixel.'], ['02', 'Structurer', 'Transformer cette vérité en thèse produit et croissance.'], ['03', 'Designer', 'Faire mériter sa place à chaque interaction.'], ['04', 'Construire', 'Développer un système rapide, robuste, prêt pour le réel.'], ['05', 'Accélérer', 'Mesurer le mouvement et rendre le suivant plus précis.']],
     workKicker: 'Projets choisis', workTitle: 'Pensés pour le moment après le lancement.', workBody: 'Un aperçu du levier digital que nous créons avec des équipes ambitieuses.', work: [['Astra Health', 'Réinventer l’accès patient', 'Santé / Plateforme web', '47%', 'de réservations finalisées en plus'], ['Nadir Finance', 'La clarté pour un capital complexe', 'Fintech / Système produit', '2,8×', 'de vélocité de leads qualifiés'], ['Northline', 'Un nouveau rythme opérationnel', 'Logistique / Automatisation', '31h', 'récupérées chaque semaine']],
     proofKicker: 'Travailler avec nous', proofTitle: 'Calme, clair, utile au business.', quote: 'Spectra ne nous a pas seulement livré un produit magnifique. Ils ont donné à notre équipe une nouvelle confiance pour entrer sur le marché.', quoteBy: 'Maya Laurent — Fondatrice, Nadir Finance',
-    formKicker: 'Faire le prochain pas', formTitle: 'Parlons de ce que vous construisez.', formBody: 'Dites-nous assez pour commencer une conversation utile. Réponse sous un jour ouvré.', formFields: ['Votre nom', 'Entreprise', 'Email professionnel', 'Téléphone (optionnel)', 'Que souhaitez-vous construire ?'], formButton: 'Demander ma consultation', formSuccess: 'Votre message est bien arrivé. Nous revenons vers vous sous un jour ouvré.', services: ['Site web', 'Application mobile', 'CRM / ERP', 'Automatisation', 'Système IA', 'Marque / croissance'],
+    formKicker: 'Faire le prochain pas', formTitle: 'Parlons de ce que vous construisez.', formBody: 'Dites-nous assez pour commencer une conversation utile. Réponse sous un jour ouvré.', formFields: ['Votre nom', 'Entreprise', 'Email professionnel', 'Numéro de téléphone *', 'Que souhaitez-vous construire ?'], formButton: 'Demander ma consultation', formSuccess: 'Votre message est bien arrivé. Nous revenons vers vous sous un jour ouvré.', services: ['Site web', 'Application mobile', 'CRM / ERP', 'Automatisation', 'Système IA', 'Marque / croissance'],
+    showcaseKicker: 'Déploiements Récents',
+    showcaseTitle: 'Sites et plateformes conçus par Spectra.',
+    showcaseBody: 'Aperçus interactifs déroulants des produits numériques déployés avec précision pour nos clients.',
+    showcaseModalTitle: 'Consultation Requise',
+    showcaseModalBody: 'Pour accéder à nos déploiements interactifs en direct et aux études de cas, veuillez d’abord remplir notre formulaire de consultation.',
+    showcaseModalBtn: 'Remplir le formulaire',
     scheduleKicker: 'Choisir la suite', scheduleTitle: 'Trouvez un créneau.', scheduleBody: 'Une conversation ciblée de 30 minutes. Sans pression.', scheduleConfirm: 'Confirmer ce créneau', confirmed: 'Vous êtes dans le calendrier.',
     faqKicker: 'Réponses claires', faqTitle: 'Avant notre échange', faqs: [['À quoi ressemble une première mission ?', 'Nous commençons par un échange de découverte ciblé, puis un sprint stratégique rémunéré lorsque le problème mérite plus de définition.'], ['Quel est le budget ?', 'La plupart des missions commencent entre 18k et 65k €, selon le périmètre et la profondeur du système.'], ['Combien de temps faut-il ?', 'Un lancement ciblé prend 6 à 10 semaines. Les systèmes plus larges sont livrés par étapes visibles.'], ['Accompagnez-vous les produits ?', 'Oui. Chaque transfert inclut la documentation et un chemin clair pour le suivi et l’optimisation.'], ['À qui appartient le produit ?', 'À vous. Le code, les fichiers et les comptes restent les vôtres dès le premier jour.']], finalTitle: 'Votre prochain chapitre mérite un meilleur système.', finalCta: 'Réserver la session stratégique gratuite',
   },
@@ -116,7 +128,13 @@ const copy = {
     methodKicker: 'منهجية Spectra', methodTitle: 'اجتماعات أقل. قرارات أفضل.', methodBody: 'عملية صغيرة وذات خبرة تحافظ على وضوح التقدم في كل مرحلة.', steps: [['01', 'اكتشاف', 'نصل إلى الحقيقة التجارية قبل لمس أي بكسل.'], ['02', 'تشكيل', 'نحول الحقيقة إلى رؤية واضحة للمنتج والنمو.'], ['03', 'تصميم', 'نجعل كل تفاعل يستحق مكانه.'], ['04', 'بناء', 'نهندس نظاماً سريعاً ومرناً للمستخدمين الحقيقيين.'], ['05', 'نمو', 'نقيس ما تحرك ونجعل الخطوة التالية أدق.']],
     workKicker: 'أعمال مختارة', workTitle: 'مصممة للحظة ما بعد الإطلاق.', workBody: 'لمحة عن النفوذ الرقمي الذي نصنعه مع الفرق الطموحة.', work: [['Astra Health', 'إعادة تصميم وصول المرضى', 'الصحة / منصة ويب', '47%', 'زيادة في الحجوزات المكتملة'], ['Nadir Finance', 'وضوح لرأس مال معقد', 'تقنية مالية / نظام منتج', '2.8×', 'سرعة العملاء المحتملين'], ['Northline', 'إيقاع تشغيلي جديد', 'لوجستيات / أتمتة', '31h', 'موفرة كل أسبوع']],
     proofKicker: 'كيف يبدو العمل معنا', proofTitle: 'هادئ، واضح، مفيد تجارياً.', quote: 'لم تمنحنا Spectra منتجاً جميلاً فحسب، بل منحت فريقنا ثقة جديدة في طريقة ظهورنا أمام السوق.', quoteBy: 'مايا لوران — مؤسسة Nadir Finance',
-    formKicker: 'اتخذ الخطوة التالية', formTitle: 'لنتحدث عن الشيء الذي تبنيه.', formBody: 'أخبرنا بما يكفي لبدء محادثة مفيدة. نرد خلال يوم عمل واحد.', formFields: ['اسمك', 'الشركة', 'البريد الإلكتروني للعمل', 'الهاتف (اختياري)', 'ماذا تريد أن تبني؟'], formButton: 'اطلب استشارتي', formSuccess: 'وصلت رسالتك إلى الفريق. سنتواصل معك خلال يوم عمل.', services: ['موقع إلكتروني', 'تطبيق جوال', 'CRM / ERP', 'أتمتة', 'نظام ذكاء اصطناعي', 'علامة / نمو'],
+    formKicker: 'اتخذ الخطوة التالية', formTitle: 'لنتحدث عن الشيء الذي تبنيه.', formBody: 'أخبرنا بما يكفي لبدء محادثة مفيدة. نرد خلال يوم عمل واحد.', formFields: ['اسمك', 'الشركة', 'البريد الإلكتروني للعمل', 'رقم الهاتف *', 'ماذا تريد أن تبني؟'], formButton: 'اطلب استشارتي', formSuccess: 'وصلت رسالتك إلى الفريق. سنتواصل معك خلال يوم عمل.', services: ['موقع إلكتروني', 'تطبيق جوال', 'CRM / ERP', 'أتمتة', 'نظام ذكاء اصطناعي', 'علامة / نمو'],
+    showcaseKicker: 'أعمالنا ومنصاتنا',
+    showcaseTitle: 'مواقع وأنظمة رقمية تم بناؤها بواسطة Spectra.',
+    showcaseBody: 'معاينة تفاعلية قابلة للتمرير للمواقع والمنصات الرقمية التي قمنا بتطويرها لعملائنا.',
+    showcaseModalTitle: 'استمارة الاستشارة مطلوبة',
+    showcaseModalBody: 'للوصول إلى الأنظمة التفاعلية المباشرة ومشاريع عملائنا، يُرجى ملء استمارة الاستشارة أولاً.',
+    showcaseModalBtn: 'الانتقال إلى استمارة الاستشارة',
     scheduleKicker: 'اختر خطوتك التالية', scheduleTitle: 'اعثر على الوقت المناسب.', scheduleBody: 'محادثة مركزة لمدة 30 دقيقة. بلا ضغط.', scheduleConfirm: 'تأكيد هذا الوقت', confirmed: 'تم حجزك في التقويم.',
     faqKicker: 'إجابات واضحة', faqTitle: 'قبل أن نلتقي', faqs: [['كيف تبدأ المهمة الأولى؟', 'نبدأ بمحادثة اكتشاف مركزة، ثم sprint استراتيجي مدفوع عندما تحتاج المشكلة إلى تعريف أعمق.'], ['ما نطاق الاستثمار؟', 'تبدأ معظم المشاريع بين 18 ألفاً و65 ألف يورو، حسب النطاق وعمق النظام.'], ['كم يستغرق المشروع؟', 'يمكن أن يستغرق الإطلاق المركز من 6 إلى 10 أسابيع. الأنظمة الأكبر تطلق على مراحل مرئية.'], ['هل تدعمون ما تبنونه؟', 'نعم. كل تسليم يتضمن التوثيق وطريقاً واضحاً للرعاية والتحسين.'], ['من يملك المنتج النهائي؟', 'أنتم. الكود وملفات التصميم والحسابات ملككم منذ اليوم الأول.']], finalTitle: 'فصلك القادم يحتاج إلى نظام أفضل.', finalCta: 'احجز جلسة الاستراتيجية المجانية',
   },
@@ -134,6 +152,15 @@ function PublicHome() {
 
   // Testimonials state from API
   const [testimonials, setTestimonials] = useState<any[]>([]);
+
+  // Portfolio showcase state
+  const [portfolioWebsites, setPortfolioWebsites] = useState<any[]>([]);
+  const [isLeadSubmitted, setIsLeadSubmitted] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && localStorage.getItem('spectra_lead_submitted') === 'true';
+  });
+  const [gateModalOpen, setGateModalOpen] = useState(false);
+  const [selectedWebsiteTitle, setSelectedWebsiteTitle] = useState('');
+  const [phoneError, setPhoneError] = useState(false);
 
   // Merged Consultation & Calendar state
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
@@ -166,8 +193,17 @@ function PublicHome() {
     fetch('/api/public/testimonials')
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setTestimonials(data);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/public/portfolio')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setPortfolioWebsites(data);
         }
       })
       .catch(() => {});
@@ -208,11 +244,22 @@ function PublicHome() {
     document.getElementById(target)?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const handleWebsiteClick = (url: string, title: string) => {
+    if (isLeadSubmitted) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      setSelectedWebsiteTitle(title);
+      setGateModalOpen(true);
+    }
+  };
+
   const handleMergedSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!clientName.trim() || !companyName.trim() || !clientEmail.trim()) {
+    if (!clientName.trim() || !companyName.trim() || !clientEmail.trim() || !clientPhone.trim()) {
+      if (!clientPhone.trim()) setPhoneError(true);
       return;
     }
+    setPhoneError(false);
     setSubmittingBooking(true);
     try {
       // 1. Create Lead
@@ -223,13 +270,21 @@ function PublicHome() {
           name: clientName.trim(),
           company: companyName.trim(),
           email: clientEmail.trim(),
-          phone: clientPhone.trim() || undefined,
+          phone: clientPhone.trim(),
           projectDescription: projectDescription.trim() || 'Strategic consultation request',
           interestedServices: selectedServices,
         }),
       });
-      if (!leadRes.ok) throw new Error('Lead registration failed');
+      if (!leadRes.ok) {
+        const err = await leadRes.json().catch(() => ({}));
+        throw new Error(err.error || 'Lead registration failed');
+      }
       const lead = await leadRes.json();
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('spectra_lead_submitted', 'true');
+      }
+      setIsLeadSubmitted(true);
 
       // 2. Book Slot if selected
       const currentDay = availableDays[selectedDayIndex];
@@ -493,94 +548,184 @@ function PublicHome() {
 
               <section id="method" className="scroll-mt-20 border-y border-white/[.07] bg-[#0a0d11]"><div className="mx-auto max-w-[1320px] px-5 py-24 sm:px-8 lg:px-12 lg:py-32"><div className="grid gap-12 lg:grid-cols-[.7fr_1.3fr]"><div><span className="eyebrow">{t.methodKicker}</span><h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] text-[#e3eaf2] sm:text-6xl">{t.methodTitle}</h2><p className="mt-6 max-w-sm text-sm leading-7 text-[#8794a5]">{t.methodBody}</p></div><div className="relative">{t.steps.map(([number,title,body], i) => <div key={number} className="group relative flex gap-6 border-b border-white/10 py-7 first:pt-0 last:border-0"><div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#668bb9]/50 bg-[#0a0d11] font-code text-[10px] text-[#a9c7ec]">{number}</div><div><h3 className="text-lg text-[#dbe4ee]">{title}</h3><p className="mt-2 max-w-md text-sm leading-6 text-[#7e8a9a]">{body}</p></div>{i < t.steps.length - 1 && <span className="absolute left-[18px] top-16 h-full w-px bg-gradient-to-b from-[#668bb8]/50 to-transparent rtl:right-[18px] rtl:left-auto" />}</div>)}</div></div></div></section>
 
-              <section id="work" className="scroll-mt-20 mx-auto max-w-[1320px] px-5 py-24 sm:px-8 lg:px-12 lg:py-36">
-                <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+              {/* Client Feedback Videos (Only rendered if admin uploaded testimonials) */}
+              {testimonials && testimonials.length > 0 && (
+                <section id="work" className="scroll-mt-20 mx-auto max-w-[1320px] px-5 py-24 sm:px-8 lg:px-12 lg:py-36">
+                  <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+                    <div>
+                      <span className="eyebrow">{lang === 'ar' ? 'أعمال مختارة وآراء العملاء' : lang === 'fr' ? 'Projets choisis & retours clients' : 'Selected work & client feedback'}</span>
+                      <h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-6xl">
+                        {lang === 'ar' ? 'تجارب عملاء ونتائج موثقة.' : lang === 'fr' ? 'Retours d’expérience & résultats vérifiés.' : 'Real results, verified by client feedback.'}
+                      </h2>
+                    </div>
+                    <p className="max-w-xs text-sm leading-6 text-[#8491a2]">
+                      {lang === 'ar' ? 'شاهد آراء عملائنا بالفيديو والنتائج التي تحققت مع استوديو Spectra.' : lang === 'fr' ? 'Découvrez en vidéo les retours de nos clients sur la vélocité et le levier digital créés par Spectra.' : 'Client feedback videos showcasing the measurable velocity, craft, and commercial leverage Spectra creates.'}
+                    </p>
+                  </div>
+                  <div className="mt-14 grid gap-6 lg:grid-cols-3">
+                    {testimonials.map((item) => (
+                      <article key={item.id} className="hover-lift group flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#10151b] shadow-2xl transition duration-300">
+                        <div>
+                          <div className="relative aspect-video w-full overflow-hidden border-b border-white/10 bg-black">
+                            <ProtectedVideoPlayer
+                              url={item.videoUrl}
+                              title={`${item.clientName} · ${item.company}`}
+                              lang={lang}
+                            />
+                          </div>
+                          <div className="p-6">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-code text-[9px] uppercase tracking-widest text-[#718197]">
+                                {item.company}
+                              </span>
+                              {item.metric && (
+                                <div className="flex items-center gap-1.5 rounded-full border border-[#72a3e6]/30 bg-[#294c79]/20 px-2.5 py-0.5 font-code text-[11px] text-[#9fc6f5]">
+                                  <strong>{item.metric}</strong>
+                                  <span className="text-[9px] text-[#7d90a7]">{item.metricLabel}</span>
+                                </div>
+                              )}
+                            </div>
+                            <blockquote className="mt-4 text-sm leading-6 text-[#d2dde9] italic">
+                              “{item.quote}”
+                            </blockquote>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between border-t border-white/[.07] bg-white/[.015] px-6 py-4">
+                          <div>
+                            <strong className="block text-xs font-semibold text-[#e1eaf3]">
+                              {item.clientName}
+                            </strong>
+                            <small className="block text-[10px] text-[#768598]">
+                              {item.clientRole ? `${item.clientRole} · ` : ''}{item.company}
+                            </small>
+                          </div>
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/[.04] text-[#86b5f4]">
+                            <Play size={11} fill="currentColor" />
+                          </span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Showcase Websites (Live Snapshot & Lead-Gating) */}
+              <section id="showcase" className="scroll-mt-20 mx-auto max-w-[1320px] px-5 py-24 sm:px-8 lg:px-12 lg:py-32">
+                <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end mb-14">
                   <div>
-                    <span className="eyebrow">{lang === 'ar' ? 'أعمال مختارة وآراء العملاء' : lang === 'fr' ? 'Projets choisis & retours clients' : 'Selected work & client feedback'}</span>
+                    <span className="eyebrow">{t.showcaseKicker}</span>
                     <h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-6xl">
-                      {lang === 'ar' ? 'تجارب عملاء ونتائج موثقة.' : lang === 'fr' ? 'Retours d’expérience & résultats vérifiés.' : 'Real results, verified by client feedback.'}
+                      {t.showcaseTitle}
                     </h2>
                   </div>
-                  <p className="max-w-xs text-sm leading-6 text-[#8491a2]">
-                    {lang === 'ar' ? 'شاهد آراء عملائنا بالفيديو والنتائج التي تحققت مع استوديو Spectra.' : lang === 'fr' ? 'Découvrez en vidéo les retours de nos clients sur la vélocité et le levier digital créés par Spectra.' : 'Client feedback videos showcasing the measurable velocity, craft, and commercial leverage Spectra creates.'}
+                  <p className="max-w-md text-sm leading-6 text-[#8491a2]">
+                    {t.showcaseBody}
                   </p>
                 </div>
-                <div className="mt-14 grid gap-6 lg:grid-cols-3">
-                  {(testimonials.length > 0 ? testimonials : [
+
+                <div className="grid gap-8 lg:grid-cols-2">
+                  {(portfolioWebsites.length > 0 ? portfolioWebsites : [
                     {
                       id: 1,
-                      clientName: "Maya Laurent",
-                      clientRole: "Founder & CEO",
-                      company: "Nadir Finance",
-                      quote: "Spectra didn't just give us a clean digital platform. They transformed our entire client acquisition velocity by 2.8x within 60 days.",
-                      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-                      metric: "2.8×",
-                      metricLabel: "qualified lead velocity",
+                      title: "Astra Health Platform",
+                      url: "https://astrahealth.io",
+                      category: "Healthcare / Web Platform",
+                      description: "Patient access infrastructure, HIPAA-compliant flows and booking system.",
                     },
                     {
                       id: 2,
-                      clientName: "Dr. Marcus Thorne",
-                      clientRole: "Chief of Medicine",
-                      company: "Astra Health",
-                      quote: "Our patient onboarding drop-off vanished. The attention to privacy, aesthetic clarity, and technical resilience is unmatched in the industry.",
-                      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-                      metric: "47%",
-                      metricLabel: "more completed bookings",
+                      title: "Nadir Finance Architecture",
+                      url: "https://nadir.finance",
+                      category: "Fintech / Product System",
+                      description: "Enterprise treasury interface and complex capital liquidity engine.",
                     },
                     {
                       id: 3,
-                      clientName: "Elena Rostova",
-                      clientRole: "VP Operations",
-                      company: "Northline Logistics",
-                      quote: "Complex enterprise workflows now feel natural. We gave 31 hours back to our operations team every single week.",
-                      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-                      metric: "31h",
-                      metricLabel: "returned each week",
+                      title: "Northline Logistics Engine",
+                      url: "https://northline.io",
+                      category: "Logistics / Automation Suite",
+                      description: "Automated warehouse dispatch and distributed operational dashboard.",
                     },
-                  ]).map((item) => (
-                    <article key={item.id} className="hover-lift group flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#10151b] shadow-2xl transition duration-300">
-                      <div>
-                        <div className="relative aspect-video w-full overflow-hidden border-b border-white/10 bg-black">
-                          <video
-                            src={item.videoUrl}
-                            controls
-                            playsInline
-                            preload="metadata"
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                        <div className="p-6">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-code text-[9px] uppercase tracking-widest text-[#718197]">
-                              {item.company}
-                            </span>
-                            {item.metric && (
-                              <div className="flex items-center gap-1.5 rounded-full border border-[#72a3e6]/30 bg-[#294c79]/20 px-2.5 py-0.5 font-code text-[11px] text-[#9fc6f5]">
-                                <strong>{item.metric}</strong>
-                                <span className="text-[9px] text-[#7d90a7]">{item.metricLabel}</span>
-                              </div>
-                            )}
+                    {
+                      id: 4,
+                      title: "Cerberus Cyber Vault",
+                      url: "https://cerberus.security",
+                      category: "Cybersecurity / Cloud Defense",
+                      description: "Zero-trust identity management and continuous threat surveillance platform.",
+                    },
+                  ]).map((site) => {
+                    const cleanDomain = site.url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+                    return (
+                      <div
+                        key={site.id}
+                        className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#0e1319] shadow-2xl transition duration-300 hover:border-[#79aef4]/40 flex flex-col"
+                      >
+                        {/* Browser Window Mockup Header */}
+                        <div className="flex items-center justify-between border-b border-white/10 bg-[#131922] px-4 py-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f56]" />
+                            <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
+                            <span className="h-2.5 w-2.5 rounded-full bg-[#27c93f]" />
                           </div>
-                          <blockquote className="mt-4 text-sm leading-6 text-[#d2dde9] italic">
-                            “{item.quote}”
-                          </blockquote>
+                          <div className="flex items-center gap-1.5 rounded-md border border-white/10 bg-black/40 px-3 py-1 font-code text-[11px] text-[#93a6be]">
+                            <Lock size={11} className="text-[#79aef4]" />
+                            <span className="truncate max-w-[160px] sm:max-w-xs">{cleanDomain}</span>
+                          </div>
+                          <span className="text-[10px] font-code uppercase tracking-wider text-[#687b92]">
+                            {site.category}
+                          </span>
+                        </div>
+
+                        {/* Interactive Viewport Mockup */}
+                        <div className="relative h-[340px] sm:h-[400px] w-full overflow-hidden bg-[#070b10]">
+                          <iframe
+                            src={site.url}
+                            title={site.title}
+                            className="w-full h-[700px] border-0 pointer-events-none scale-100 origin-top opacity-85 group-hover:opacity-95 transition-opacity"
+                            sandbox="allow-scripts allow-same-origin"
+                            loading="lazy"
+                          />
+
+                          {/* Interactive Click Shield Overlay */}
+                          <div
+                            onClick={() => handleWebsiteClick(site.url, site.title)}
+                            className="absolute inset-0 cursor-pointer flex flex-col justify-end p-4 bg-gradient-to-t from-[#080c11] via-[#080c11]/30 to-transparent"
+                          >
+                            <div className="flex items-center justify-between gap-3 rounded-xl border border-white/15 bg-[#0e1620]/95 p-3.5 sm:p-4 backdrop-blur-md shadow-lg transition-transform group-hover:-translate-y-0.5">
+                              <div>
+                                <h4 className="text-sm font-semibold text-[#e8f0fa] flex items-center gap-2">
+                                  {site.title}
+                                  {isLeadSubmitted ? (
+                                    <span className="text-[10px] font-code text-[#79aef4] border border-[#79aef4]/30 rounded px-1.5 py-0.5">
+                                      UNLOCKED
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-code text-[#8fa2b8] border border-white/10 rounded px-1.5 py-0.5">
+                                      RESTRICTED
+                                    </span>
+                                  )}
+                                </h4>
+                                <p className="text-[11px] text-[#8ea1b8] mt-0.5">{site.description || site.category}</p>
+                              </div>
+                              <div className="shrink-0">
+                                {isLeadSubmitted ? (
+                                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#79aef4]/40 bg-[#79aef4]/15 px-3 py-1.5 text-xs font-medium text-[#9ec4f5] shadow-[0_0_15px_rgba(121,174,244,0.2)]">
+                                    <ExternalLink size={13} />
+                                    {lang === 'ar' ? 'فتح الموقع' : lang === 'fr' ? 'Ouvrir le site' : 'Open Site'}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-[#b8cce2] group-hover:border-[#79aef4]/50 group-hover:text-white transition">
+                                    <Lock size={12} className="text-[#79aef4]" />
+                                    {lang === 'ar' ? 'معاينة الموقع' : lang === 'fr' ? 'Accéder' : 'Preview Site'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between border-t border-white/[.07] bg-white/[.015] px-6 py-4">
-                        <div>
-                          <strong className="block text-xs font-semibold text-[#e1eaf3]">
-                            {item.clientName}
-                          </strong>
-                          <small className="block text-[10px] text-[#768598]">
-                            {item.clientRole ? `${item.clientRole} · ` : ''}{item.company}
-                          </small>
-                        </div>
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/[.04] text-[#86b5f4]">
-                          <Play size={11} fill="currentColor" />
-                        </span>
-                      </div>
-                    </article>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
 
@@ -790,17 +935,31 @@ function PublicHome() {
                             </div>
 
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">
-                                {t.formFields[3]}
+                              <label className="mb-1.5 flex items-center justify-between text-xs font-medium text-[#9aa8b8]">
+                                <span>{t.formFields[3]}</span>
+                                <span className="text-[10px] text-[#79aef4] font-code uppercase tracking-wider">
+                                  {lang === 'ar' ? 'إجباري' : lang === 'fr' ? 'Requis' : 'Required'}
+                                </span>
                               </label>
                               <input
+                                required
                                 type="tel"
                                 value={clientPhone}
-                                onChange={(e) => setClientPhone(e.target.value)}
-                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
-                                placeholder="+33 6 ..."
+                                onChange={(e) => {
+                                  setClientPhone(e.target.value);
+                                  if (e.target.value.trim()) setPhoneError(false);
+                                }}
+                                className={`focus-ring w-full rounded-lg border ${
+                                  phoneError ? 'border-[#e27373] bg-[#e27373]/10' : 'border-white/10 bg-white/[.03]'
+                                } px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]`}
+                                placeholder="+213 5... / +33 6..."
                                 data-testid="input-phone"
                               />
+                              {phoneError && (
+                                <span className="mt-1 block text-[11px] text-[#e27373]">
+                                  {lang === 'ar' ? 'يرجى إدخال رقم الهاتف للمتابعة' : lang === 'fr' ? 'Veuillez saisir votre numéro de téléphone' : 'Please enter your phone number to continue'}
+                                </span>
+                              )}
                             </div>
                           </div>
 
@@ -893,6 +1052,41 @@ function PublicHome() {
 
             <button onClick={() => scrollTo('consultation')} className="fixed bottom-4 right-4 sm:bottom-6 sm:right-8 z-30 flex items-center gap-2 rounded-full border border-[#82afea]/40 bg-[#152338]/90 px-4 py-3 text-xs font-semibold text-[#dbeaff] shadow-2xl backdrop-blur-xl transition hover:-translate-y-1 hover:bg-[#203b60] active:scale-95 safe-bottom" data-testid="button-floating-cta"><CalendarDays size={15} /> {t.book}</button>
             {exitOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Special invitation"><div className="glass relative max-w-md rounded-2xl p-7 sm:p-9"><button onClick={() => setExitOpen(false)} className="absolute right-4 top-4 text-[#8290a1]" aria-label="Close" data-testid="button-close-exit"><X size={18} /></button><span className="eyebrow">A considered next step</span><h2 className="mt-5 text-3xl font-semibold tracking-[-.05em] text-[#e7edf4]">Before you go — take the scorecard with you.</h2><p className="mt-4 text-sm leading-6 text-[#8997a8]">Book a private 30-minute conversation and we’ll map the highest-leverage opportunity in your current digital experience.</p><button onClick={() => { setExitOpen(false); scrollTo('consultation'); }} className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#e7edf4] py-3 text-sm font-bold text-[#080a0d]" data-testid="button-exit-cta">{t.book}<ArrowRight size={15} /></button></div></div>}
+
+            {gateModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Consultation Required">
+                <div className="glass relative max-w-md rounded-2xl p-7 sm:p-9 border border-[#82afea]/30 shadow-2xl">
+                  <button onClick={() => setGateModalOpen(false)} className="absolute right-4 top-4 text-[#8290a1] hover:text-white" aria-label="Close">
+                    <X size={18} />
+                  </button>
+                  <span className="eyebrow">{lang === 'ar' ? 'معاينة المشروع' : lang === 'fr' ? 'Aperçu du Projet' : 'Project Preview'}</span>
+                  <h2 className="mt-4 text-2xl sm:text-3xl font-semibold tracking-[-.05em] text-[#e7edf4]">
+                    {selectedWebsiteTitle ? `"${selectedWebsiteTitle}"` : (lang === 'ar' ? 'هذا الموقع' : lang === 'fr' ? 'Ce site' : 'This website')}
+                  </h2>
+                  <p className="mt-4 text-sm leading-6 text-[#8997a8]">
+                    {t.portfolioGateNotice}
+                  </p>
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                    <button
+                      onClick={() => {
+                        setGateModalOpen(false);
+                        scrollTo('consultation');
+                      }}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#e7edf4] py-3 text-sm font-bold text-[#080a0d] hover:bg-[#a9cbfb] transition active:scale-[0.98]"
+                    >
+                      {t.portfolioGateAction}
+                      <ArrowRight size={15} />
+                    </button>
+                    <button
+                      onClick={() => setGateModalOpen(false)}
+                      className="rounded-full border border-white/10 px-5 py-3 text-xs font-semibold text-[#a6b6c8] hover:bg-white/5 transition"
+                    >
+                      {lang === 'ar' ? 'إغلاق' : lang === 'fr' ? 'Fermer' : 'Dismiss'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </ErrorBoundary>
         <Toaster />
@@ -902,7 +1096,7 @@ function PublicHome() {
 }
 
 function Field({ label, id, type = 'text' }: { label: string; id: string; type?: string }) {
-  return <label><span className="mb-2 block text-[11px] text-[#9aa8b8]">{label}</span><input required={id !== 'phone'} id={id} name={id} type={type} className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3 py-3 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]" data-testid={`input-${id}`} /></label>;
+  return <label><span className="mb-2 block text-[11px] text-[#9aa8b8]">{label}</span><input required id={id} name={id} type={type} className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3 py-3 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]" data-testid={`input-${id}`} /></label>;
 }
 
 function FooterCol({ title, items, onSelect }: { title: string; items: readonly string[]; onSelect: (index: number) => void }) {
@@ -1189,6 +1383,7 @@ function AdminRoute() {
       <Switch>
         <Route path="/admin/leads" component={AdminLeads} />
         <Route path="/admin/testimonials" component={AdminTestimonials} />
+        <Route path="/admin/portfolio" component={AdminPortfolio} />
         <Route path="/admin/video" component={AdminVideo} />
         <Route path="/admin/availability" component={AdminAvailability} />
         <Route path="/admin/bookings" component={AdminBookings} />

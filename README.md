@@ -7,12 +7,20 @@
 ## 🌟 Key Highlights & Capabilities
 
 - **Cyberpunk / Glassmorphism Landing Funnel**: Ultra-refined dark aesthetic, interactive service selector, dynamic slot scheduling, and conversion-optimized flow.
-- **Protected VSL Video Player**:
+- **Mandatory Phone & Lead Validation**:
+  - Phone number is required and strictly validated on both frontend and backend (`POST /api/leads`).
+  - Persistent lead recognition (`spectra_lead_submitted`) across sessions to unlock gated agency assets.
+- **Protected VSL & Client Feedback Video Streaming**:
   - **Anti-Download Protection**: Blocks external download managers (**Internet Download Manager - IDM**, FDM, JDownloader, aria2, curl, wget, yt-dlp).
   - **Ephemeral HMAC Stream Tickets**: Media requests require cryptographically signed short-lived tokens generated server-side.
   - **Direct URL & Tab Navigation Blocked**: Prevents opening raw video links in new browser tabs or address bars (`Sec-Fetch-Dest` enforcement).
   - **Anti-Sniffing & Anti-Attachment Headers**: Responses sent with `Content-Disposition: inline; filename="stream.bin"`, `nosniff`, and aggressive `no-store` cache controls.
   - **DOM Overlay Shield & Custom Controls**: Transparent overlay prevents IDM hover buttons from hooking the video element; context menu (`Save video as...`) and inspect shortcuts are completely disabled.
+  - **Dynamic Client Feedback Section**: Automatically hidden if the admin has not uploaded any testimonials; all feedback videos feature full anti-download protection and direct video file uploads.
+- **Interactive Portfolio Showcase & Lead-Gating**:
+  - Admin management panel to showcase client websites simply by submitting their URL.
+  - Realistic browser mockup window with traffic lights, SSL security badge, and interactive scrollable iframe snapshot.
+  - **Conversion-Driving Lead Gate**: Unregistered visitors clicking a project preview are prompted to complete the consultation form first, automatically scrolling to the form. Registered visitors are forwarded directly to the live site.
 - **Autonomous Lead Management CRM**:
   - Real-time lead tracking with color-coded status badges (`registered`, `reviewing`, `approved`, `refused`, `scheduled`, `met`, `fit`, `unfit`).
   - Interactive lead management actions (detail modal, status update, and lead deletion).

@@ -92,6 +92,17 @@ export const googleCalendarSettingsTable = pgTable("google_calendar_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const portfolioWebsitesTable = pgTable("portfolio_websites", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  url: text("url").notNull(),
+  category: text("category").notNull().default("Digital System"),
+  description: text("description"),
+  displayOrder: integer("display_order").notNull().default(0),
+  isPublished: boolean("is_published").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type AdminUser = typeof adminUsersTable.$inferSelect;
 export type Lead = typeof leadsTable.$inferSelect;
 export type VideoAsset = typeof videoAssetsTable.$inferSelect;
@@ -99,3 +110,4 @@ export type AvailabilityRule = typeof availabilityRulesTable.$inferSelect;
 export type Booking = typeof bookingsTable.$inferSelect;
 export type ClientTestimonial = typeof clientTestimonialsTable.$inferSelect;
 export type GoogleCalendarSettings = typeof googleCalendarSettingsTable.$inferSelect;
+export type PortfolioWebsite = typeof portfolioWebsitesTable.$inferSelect;

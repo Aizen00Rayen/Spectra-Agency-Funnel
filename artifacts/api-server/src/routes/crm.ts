@@ -38,6 +38,7 @@ import {
   clientTestimonialsTable,
   db,
   leadsTable,
+  portfolioWebsitesTable,
   videoAssetsTable,
 } from "@workspace/db";
 
@@ -180,15 +181,29 @@ router.get("/public/config", async (req, res) => {
 
 router.post("/leads", async (req, res) => {
   const input = CreateLeadBody.parse(req.body);
+  if (!input.phone || !input.phone.trim()) {
+    res.status(400).json({ error: "Phone number is required." });
+    return;
+  }
   const [lead] = await db
     .insert(leadsTable)
     .values({
       ...input,
+      phone: input.phone.trim(),
       interestedServices: input.interestedServices ?? [],
       status: "registered",
     })
     .returning();
   res.status(201).json(CreateLeadResponse.parse(serializeLead(lead)));
+});
+
+router.get("/public/portfolio", async (_req, res) => {
+  const items = await db
+    .select()
+    .from(portfolioWebsitesTable)
+    .where(eq(portfolioWebsitesTable.isPublished, true))
+    .orderBy(portfolioWebsitesTable.displayOrder, desc(portfolioWebsitesTable.createdAt));
+  res.json(items);
 });
 
 router.get("/public/availability", async (req, res) => {
@@ -242,13 +257,39 @@ router.post("/bookings", async (req, res) => {
   res.status(201).json(CreateBookingResponse.parse(serializeBooking(booking)));
 });
 
-router.get("/public/testimonials", async (_req, res) => {
+router.get("/public/testimonials", async (req, res) => {
+  const rawHost = req.headers["x-forwarded-host"] || req.headers.host || "localhost:5000";
+  const host = Array.isArray(rawHost) ? rawHost[0] : String(rawHost);
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+
   const testimonials = await db
     .select()
     .from(clientTestimonialsTable)
     .where(eq(clientTestimonialsTable.isPublished, true))
     .orderBy(desc(clientTestimonialsTable.createdAt));
-  res.json(testimonials);
+
+  const signedTestimonials = testimonials.map((t) => {
+    let videoUrl = t.videoUrl;
+    if (videoUrl) {
+      if (videoUrl.includes("/api/storage/objects/")) {
+        const filename = videoUrl.split("/api/storage/objects/")[1]?.split("?")[0];
+        if (filename) {
+          const ticket = generateStreamTicket(filename);
+          videoUrl = `${protocol}://${host}/api/storage/objects/${filename}?ticket=${ticket}`;
+        }
+      } else if (videoUrl.startsWith("/objects/")) {
+        const filename = videoUrl.replace(/^\/objects\//, "").split("?")[0];
+        const ticket = generateStreamTicket(filename);
+        videoUrl = `${protocol}://${host}/api/storage/objects/${filename}?ticket=${ticket}`;
+      }
+    }
+    return {
+      ...t,
+      videoUrl,
+    };
+  });
+
+  res.json(signedTestimonials);
 });
 
 router.post("/admin/login", async (req, res) => {
@@ -351,6 +392,64 @@ router.patch("/admin/testimonials/:id", async (req, res) => {
 router.delete("/admin/testimonials/:id", async (req, res) => {
   const id = Number(req.params.id);
   await db.delete(clientTestimonialsTable).where(eq(clientTestimonialsTable.id, id));
+  res.status(204).end();
+});
+
+router.get("/admin/portfolio", async (_req, res) => {
+  const items = await db
+    .select()
+    .from(portfolioWebsitesTable)
+    .orderBy(portfolioWebsitesTable.displayOrder, desc(portfolioWebsitesTable.createdAt));
+  res.json(items);
+});
+
+router.post("/admin/portfolio", async (req, res) => {
+  const { title, url, category, description, displayOrder, isPublished } = req.body || {};
+  if (!title || !url) {
+    res.status(400).json({ error: "Title and URL are required" });
+    return;
+  }
+  const [created] = await db
+    .insert(portfolioWebsitesTable)
+    .values({
+      title: title.trim(),
+      url: url.trim(),
+      category: category ? category.trim() : "Digital System",
+      description: description ? description.trim() : null,
+      displayOrder: typeof displayOrder === "number" ? displayOrder : 0,
+      isPublished: typeof isPublished === "boolean" ? isPublished : true,
+    })
+    .returning();
+  res.status(201).json(created);
+});
+
+router.patch("/admin/portfolio/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const { title, url, category, description, displayOrder, isPublished } = req.body || {};
+  const updateData: Record<string, unknown> = {};
+  if (title) updateData.title = title.trim();
+  if (url) updateData.url = url.trim();
+  if (category) updateData.category = category.trim();
+  if (description !== undefined) updateData.description = description;
+  if (typeof displayOrder === "number") updateData.displayOrder = displayOrder;
+  if (typeof isPublished === "boolean") updateData.isPublished = isPublished;
+
+  const [updated] = await db
+    .update(portfolioWebsitesTable)
+    .set(updateData)
+    .where(eq(portfolioWebsitesTable.id, id))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "Portfolio item not found" });
+    return;
+  }
+  res.json(updated);
+});
+
+router.delete("/admin/portfolio/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  await db.delete(portfolioWebsitesTable).where(eq(portfolioWebsitesTable.id, id));
   res.status(204).end();
 });
 

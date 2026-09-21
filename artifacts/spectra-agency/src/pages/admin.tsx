@@ -331,6 +331,7 @@ function AdminShell({ children }: { children: ReactNode }) {
     { href: "/admin", label: t.nav.overview, icon: LayoutDashboard },
     { href: "/admin/leads", label: t.nav.leads, icon: Users },
     { href: "/admin/testimonials", label: t.nav.feedback, icon: MessageSquareQuote },
+    { href: "/admin/portfolio", label: t.nav.portfolio, icon: Globe2 },
     { href: "/admin/video", label: t.nav.video, icon: Video },
     { href: "/admin/availability", label: t.nav.availability, icon: Clock3 },
     { href: "/admin/bookings", label: t.nav.bookings, icon: Calendar },
@@ -1716,6 +1717,7 @@ export function AdminTestimonials() {
   const [metricLabel, setMetricLabel] = useState("");
   const [isPublished, setIsPublished] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [formFeedback, setFormFeedback] = useState<{ text: string; kind: "success" | "error" } | null>(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("spectra_admin_token") : null;
@@ -1726,6 +1728,31 @@ export function AdminTestimonials() {
     }),
     [token]
   );
+
+  const handleVideoUpload = async (file: File) => {
+    try {
+      setUploadingVideo(true);
+      setFormFeedback(null);
+      const reqRes = await fetch("/api/storage/uploads/request-url", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ name: file.name, size: file.size }),
+      });
+      if (!reqRes.ok) throw new Error("Could not request upload URL");
+      const { uploadURL, objectPath } = await reqRes.json();
+      const uploadRes = await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error("Could not upload video file");
+      setVideoUrl(`/api/storage${objectPath}`);
+      setFormFeedback({ text: "Video file uploaded successfully!", kind: "success" });
+    } catch (err: any) {
+      setFormFeedback({ text: err.message || "Failed to upload video", kind: "error" });
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
 
   const loadTestimonials = async () => {
     try {
@@ -2026,15 +2053,32 @@ export function AdminTestimonials() {
               />
             </label>
 
-            <label className="admin-field">
+            <div className="admin-field">
               <span>{t.feedback.videoUrlLabel}</span>
-              <input
-                required
-                value={videoUrl}
-                onChange={(e) => setVideoUrl(e.target.value)}
-                placeholder="https://.../video.mp4"
-              />
-            </label>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <input
+                  required
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="https://... or upload video file"
+                  style={{ flex: 1 }}
+                />
+                <label className="admin-button admin-button-secondary" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11px", padding: "8px 12px", whiteSpace: "nowrap" }}>
+                  <UploadCloud size={14} />
+                  {uploadingVideo ? "Uploading..." : "Upload File"}
+                  <input
+                    type="file"
+                    accept="video/*"
+                    disabled={uploadingVideo}
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleVideoUpload(file);
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
 
             {/* Helper presets */}
             <div>
@@ -2118,6 +2162,325 @@ export function AdminTestimonials() {
               className="admin-button admin-button-primary admin-full-button"
             >
               <Plus size={15} /> {submitting ? t.feedback.addingFeedback : t.feedback.addFeedbackBtn}
+            </button>
+          </form>
+        </section>
+      </div>
+    </AdminShell>
+  );
+}
+
+export interface PortfolioItem {
+  id: number;
+  title: string;
+  url: string;
+  category: string;
+  description?: string | null;
+  displayOrder: number;
+  isPublished: boolean;
+  createdAt: string;
+}
+
+export function AdminPortfolio() {
+  const [items, setItems] = useState<PortfolioItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { t, formatAdminDate } = useAdminLang();
+
+  // Form state
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+  const [category, setCategory] = useState("Digital System");
+  const [description, setDescription] = useState("");
+  const [isPublished, setIsPublished] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [formFeedback, setFormFeedback] = useState<{ text: string; kind: "success" | "error" } | null>(null);
+
+  const token = typeof window !== "undefined" ? localStorage.getItem("spectra_admin_token") : null;
+  const headers = useMemo(
+    () => ({
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }),
+    [token]
+  );
+
+  const loadPortfolio = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/admin/portfolio", { headers });
+      if (!res.ok) throw new Error("Failed to fetch portfolio websites");
+      const data = await res.json();
+      setItems(data);
+    } catch (err: any) {
+      setError(err.message || "Failed to load portfolio websites");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPortfolio();
+  }, [headers]);
+
+  const togglePublish = async (id: number, current: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/portfolio/${id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ isPublished: !current }),
+      });
+      if (!res.ok) throw new Error("Update failed");
+      const updated = await res.json();
+      setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
+    } catch {
+      alert("Could not update website status.");
+    }
+  };
+
+  const deleteItem = async (id: number) => {
+    if (!confirm("Are you sure you want to remove this showcase website?")) return;
+    try {
+      const res = await fetch(`/api/admin/portfolio/${id}`, {
+        method: "DELETE",
+        headers,
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      setItems((prev) => prev.filter((item) => item.id !== id));
+    } catch {
+      alert("Could not delete website.");
+    }
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !url.trim()) {
+      setFormFeedback({ text: "Please enter website title and URL.", kind: "error" });
+      return;
+    }
+
+    let formattedUrl = url.trim();
+    if (!formattedUrl.startsWith("http://") && !formattedUrl.startsWith("https://")) {
+      formattedUrl = `https://${formattedUrl}`;
+    }
+
+    try {
+      setSubmitting(true);
+      setFormFeedback(null);
+      const res = await fetch("/api/admin/portfolio", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          title: title.trim(),
+          url: formattedUrl,
+          category: category.trim() || "Digital System",
+          description: description.trim() || undefined,
+          isPublished,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to add showcase website");
+      }
+
+      const created = await res.json();
+      setItems((prev) => [created, ...prev]);
+      setFormFeedback({ text: `Showcase website "${title}" added successfully!`, kind: "success" });
+      setTitle("");
+      setUrl("");
+      setDescription("");
+      setCategory("Digital System");
+    } catch (err: any) {
+      setFormFeedback({ text: err.message || "Failed to add website", kind: "error" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <AdminShell>
+      <PageHeader
+        eyebrow="PORTFOLIO & SYSTEM SHOWCASE"
+        title={t.nav.portfolio}
+        detail="Showcase live websites and digital products built by Spectra with interactive scrollable previews on the visitor funnel."
+        action={
+          <span className="admin-timezone-badge">
+            <Globe2 size={14} /> {items.filter((i) => i.isPublished).length} Published
+          </span>
+        }
+      />
+
+      <div className="admin-video-grid">
+        {/* Left Column: List */}
+        <section className="admin-panel">
+          <div className="admin-panel-heading">
+            <div>
+              <p className="admin-kicker">LIVE SHOWCASE COLLECTION</p>
+              <h2>All Showcase Websites ({items.length})</h2>
+            </div>
+            <button
+              onClick={loadPortfolio}
+              className="admin-button admin-button-secondary"
+              style={{ padding: "6px 12px", fontSize: "11px" }}
+            >
+              <RefreshCw size={13} /> {t.common.refresh}
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="admin-table-skeleton">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="admin-skeleton admin-row-skeleton" />
+              ))}
+            </div>
+          ) : error ? (
+            <StateMessage kind="error" title="Unable to load showcase" detail={error} onRetry={loadPortfolio} />
+          ) : items.length === 0 ? (
+            <div className="admin-empty" style={{ padding: "40px 20px", textAlign: "center" }}>
+              <Globe2 size={32} style={{ margin: "0 auto 12px", opacity: 0.4 }} />
+              <p style={{ fontWeight: 600, color: "#d2dde9" }}>No showcase websites yet</p>
+              <small style={{ color: "#74869c" }}>
+                Add your first client website or digital product using the form on the right.
+              </small>
+            </div>
+          ) : (
+            <div className="admin-feedback-list">
+              {items.map((item) => (
+                <div key={item.id} className="admin-feedback-card">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <strong style={{ color: "#e4ecf5", fontSize: "14px" }}>{item.title}</strong>
+                        <span style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "4px", background: "rgba(116, 168, 235, 0.15)", color: "#8ab7ed" }}>
+                          {item.category}
+                        </span>
+                      </div>
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: "#74869c", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "4px", textDecoration: "none" }}
+                      >
+                        {item.url} <ArrowUpRight size={11} />
+                      </a>
+                      {item.description && (
+                        <p style={{ color: "#9cb1c9", fontSize: "12px", marginTop: "6px" }}>{item.description}</p>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <button
+                        onClick={() => togglePublish(item.id, item.isPublished)}
+                        className={`admin-icon-btn ${item.isPublished ? "is-active" : ""}`}
+                        title={item.isPublished ? "Published (Click to hide)" : "Hidden (Click to publish)"}
+                      >
+                        {item.isPublished ? <Eye size={14} /> : <EyeOff size={14} />}
+                      </button>
+                      <button
+                        onClick={() => deleteItem(item.id)}
+                        className="admin-icon-btn is-danger"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Right Column: Form */}
+        <section className="admin-panel" style={{ alignSelf: "start" }}>
+          <div className="admin-panel-heading">
+            <div>
+              <p className="admin-kicker">ADD SHOWCASE</p>
+              <h2>Add Website Link</h2>
+            </div>
+            <Plus size={17} className="admin-muted-icon" />
+          </div>
+
+          <form onSubmit={handleSubmit} className="admin-upload-form" style={{ gap: "14px" }}>
+            <label className="admin-field">
+              <span>Website Title</span>
+              <input
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Nadir Capital Platform"
+              />
+            </label>
+
+            <label className="admin-field">
+              <span>Website URL (Link)</span>
+              <input
+                required
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="e.g. https://nadir.finance or www.example.com"
+              />
+            </label>
+
+            <label className="admin-field">
+              <span>Category / Industry</span>
+              <input
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="e.g. Fintech / Web Application, E-commerce, SaaS"
+              />
+            </label>
+
+            <label className="admin-field">
+              <span>Short Description (Optional)</span>
+              <textarea
+                rows={2}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Brief summary of what makes this website special"
+                style={{
+                  minHeight: "60px",
+                  borderRadius: "6px",
+                  border: "1px solid rgba(150, 174, 205, 0.17)",
+                  backgroundColor: "#111a24",
+                  color: "#cbd9e8",
+                  padding: "10px",
+                  fontSize: "12px",
+                  resize: "vertical",
+                  outline: "none",
+                }}
+              />
+            </label>
+
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", marginTop: "4px" }}>
+              <input
+                type="checkbox"
+                checked={isPublished}
+                onChange={(e) => setIsPublished(e.target.checked)}
+                style={{ accentColor: "#74a8eb" }}
+              />
+              <span style={{ color: "#b8c9db", fontSize: "11px" }}>Publish immediately on landing page</span>
+            </label>
+
+            {formFeedback && (
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "11px",
+                  color: formFeedback.kind === "success" ? "#91d1b0" : "#e2a1a7",
+                }}
+              >
+                {formFeedback.text}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="admin-button admin-button-primary admin-full-button"
+            >
+              <Plus size={15} /> {submitting ? "Adding..." : "Add to Showcase"}
             </button>
           </form>
         </section>

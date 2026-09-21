@@ -8,6 +8,7 @@ export interface AdminTranslations {
     overview: string;
     leads: string;
     feedback: string;
+    portfolio: string;
     video: string;
     availability: string;
     bookings: string;
@@ -201,6 +202,7 @@ export const adminCopies: Record<AdminLang, AdminTranslations> = {
       overview: "Overview",
       leads: "Leads",
       feedback: "Client feedback",
+      portfolio: "Showcase Websites",
       video: "Video library",
       availability: "Availability",
       bookings: "Bookings",
@@ -408,6 +410,7 @@ export const adminCopies: Record<AdminLang, AdminTranslations> = {
       overview: "Vue d’ensemble",
       leads: "Prospects",
       feedback: "Retours clients",
+      portfolio: "Sites Vitrines",
       video: "Médiathèque vidéo",
       availability: "Disponibilités",
       bookings: "Rendez-vous",
@@ -615,6 +618,7 @@ export const adminCopies: Record<AdminLang, AdminTranslations> = {
       overview: "نظرة عامة",
       leads: "طلبات التواصل",
       feedback: "آراء العملاء",
+      portfolio: "المواقع المعروضة",
       video: "مكتبة الفيديو",
       availability: "أوقات العمل",
       bookings: "الحجوزات",
