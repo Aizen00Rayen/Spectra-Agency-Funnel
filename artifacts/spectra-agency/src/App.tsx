@@ -11,6 +11,7 @@ import { Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wo
 import { AdminAvailability, AdminBookings, AdminLeads, AdminOverview, AdminPortfolio, AdminTestimonials, AdminVideo } from '@/pages/admin';
 import { AdminLangProvider, type AdminLang } from '@/pages/admin-i18n';
 import { ProtectedVideoPlayer } from '@/components/ProtectedVideoPlayer';
+import { AccordionGallery } from '@/components/AccordionGallery';
 import { setAuthTokenGetter, useGetPublicConfig } from '@workspace/api-client-react';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, Calendar, CalendarDays, Check, ChevronDown,
@@ -252,6 +253,78 @@ function PublicHome() {
       setGateModalOpen(true);
     }
   };
+
+  const showcaseItems = useMemo(() => {
+    const list =
+      portfolioWebsites.length > 0
+        ? portfolioWebsites
+        : [
+            {
+              id: 1,
+              title: 'The Results Academy',
+              url: 'https://theresults-academy.com/',
+              category: 'E-Learning Platform',
+              description: 'Interactive modern educational portal and digital curriculum system.',
+            },
+            {
+              id: 2,
+              title: 'The Bequer',
+              url: 'https://thebequer.tech/',
+              category: 'Cosmetics & Tech',
+              description: 'Luxury e-commerce and branded cosmetic retail experience.',
+            },
+            {
+              id: 3,
+              title: 'FYN Beauty',
+              url: 'https://fynbeauty.shop/',
+              category: 'Cosmetics Store',
+              description: 'High-converting boutique beauty showcase and checkout flow.',
+            },
+            {
+              id: 4,
+              title: 'Astra Health Platform',
+              url: 'https://astrahealth.io',
+              category: 'Healthcare Platform',
+              description: 'Patient access infrastructure, HIPAA-compliant flows and booking system.',
+            },
+            {
+              id: 5,
+              title: 'Nadir Finance Architecture',
+              url: 'https://nadir.finance',
+              category: 'Fintech Platform',
+              description: 'Enterprise treasury interface and complex capital liquidity engine.',
+            },
+          ];
+
+    return list.map((site: any) => {
+      const snapshotUrl =
+        site.imageUrl ||
+        `https://api.microlink.io/?url=${encodeURIComponent(site.url)}&screenshot=true&embed=screenshot.url`;
+      return {
+        image: snapshotUrl,
+        label: site.title,
+        category: site.category || 'Digital System',
+        link: '#',
+        alt: site.title,
+        isLocked: !isLeadSubmitted,
+        actionLabel: isLeadSubmitted
+          ? lang === 'ar'
+            ? 'فتح الموقع المباشر ↗'
+            : lang === 'fr'
+            ? 'Ouvrir le site ↗'
+            : 'Open Live Site ↗'
+          : lang === 'ar'
+          ? 'معاينة المشروع 🔒'
+          : lang === 'fr'
+          ? 'Accéder au projet 🔒'
+          : 'Preview Project 🔒',
+        onClick: (e: React.MouseEvent) => {
+          e.preventDefault();
+          handleWebsiteClick(site.url, site.title);
+        },
+      };
+    });
+  }, [portfolioWebsites, isLeadSubmitted, lang]);
 
   const handleMergedSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -609,9 +682,9 @@ function PublicHome() {
                 </section>
               )}
 
-              {/* Showcase Websites (Live Snapshot & Lead-Gating) */}
+              {/* Showcase Websites (Interactive Accordion Gallery & Lead-Gating) */}
               <section id="showcase" className="scroll-mt-20 mx-auto max-w-[1320px] px-5 py-24 sm:px-8 lg:px-12 lg:py-32">
-                <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end mb-14">
+                <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end mb-10">
                   <div>
                     <span className="eyebrow">{t.showcaseKicker}</span>
                     <h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-6xl">
@@ -623,45 +696,35 @@ function PublicHome() {
                   </p>
                 </div>
 
-                <div className="grid gap-8 lg:grid-cols-2">
-                  {(portfolioWebsites.length > 0 ? portfolioWebsites : [
-                    {
-                      id: 1,
-                      title: "Astra Health Platform",
-                      url: "https://astrahealth.io",
-                      category: "Healthcare / Web Platform",
-                      description: "Patient access infrastructure, HIPAA-compliant flows and booking system.",
-                    },
-                    {
-                      id: 2,
-                      title: "Nadir Finance Architecture",
-                      url: "https://nadir.finance",
-                      category: "Fintech / Product System",
-                      description: "Enterprise treasury interface and complex capital liquidity engine.",
-                    },
-                    {
-                      id: 3,
-                      title: "Northline Logistics Engine",
-                      url: "https://northline.io",
-                      category: "Logistics / Automation Suite",
-                      description: "Automated warehouse dispatch and distributed operational dashboard.",
-                    },
-                    {
-                      id: 4,
-                      title: "Cerberus Cyber Vault",
-                      url: "https://cerberus.security",
-                      category: "Cybersecurity / Cloud Defense",
-                      description: "Zero-trust identity management and continuous threat surveillance platform.",
-                    },
-                  ]).map((site) => (
-                    <ShowcaseCard
-                      key={site.id}
-                      site={site}
-                      lang={lang}
-                      isLeadSubmitted={isLeadSubmitted}
-                      onWebsiteClick={handleWebsiteClick}
-                    />
-                  ))}
+                <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#090d13]/85 p-3 sm:p-6 shadow-2xl backdrop-blur-xl">
+                  <AccordionGallery
+                    items={showcaseItems}
+                    defaultIndex={Math.min(1, Math.max(0, showcaseItems.length - 1))}
+                    expandRatio={0.52}
+                    height={480}
+                    gap={12}
+                    radius={16}
+                    accentColor="#79acee"
+                    overlayColor="#070b12"
+                    textColor="#f1f6fc"
+                    trigger="hover"
+                    tilt={6}
+                    duration={0.65}
+                    grayscale={false}
+                  />
+                  <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 text-[11px] text-[#71859c]">
+                    <span className="flex items-center gap-2">
+                      <Lock size={12} className="text-[#79acee]" />
+                      {lang === 'ar'
+                        ? 'مرر فوق أي مشروع لتوسيعه ومعاينته · انقر للوصول أو طلب معاينة استراتيجية'
+                        : lang === 'fr'
+                        ? 'Survolez un projet pour agrandir l’aperçu · Cliquez pour accéder au projet'
+                        : 'Hover any project panel to expand live preview · Click to unlock access'}
+                    </span>
+                    <span className="font-code text-[10px] uppercase tracking-wider text-[#79acee]/80">
+                      {showcaseItems.length} {lang === 'ar' ? 'مشاريع حية' : lang === 'fr' ? 'Projets déployés' : 'Deployed Systems'}
+                    </span>
+                  </div>
                 </div>
               </section>
 
