@@ -653,79 +653,15 @@ function PublicHome() {
                       category: "Cybersecurity / Cloud Defense",
                       description: "Zero-trust identity management and continuous threat surveillance platform.",
                     },
-                  ]).map((site) => {
-                    const cleanDomain = site.url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-                    return (
-                      <div
-                        key={site.id}
-                        className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#0e1319] shadow-2xl transition duration-300 hover:border-[#79aef4]/40 flex flex-col"
-                      >
-                        {/* Browser Window Mockup Header */}
-                        <div className="flex items-center justify-between border-b border-white/10 bg-[#131922] px-4 py-2.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f56]" />
-                            <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
-                            <span className="h-2.5 w-2.5 rounded-full bg-[#27c93f]" />
-                          </div>
-                          <div className="flex items-center gap-1.5 rounded-md border border-white/10 bg-black/40 px-3 py-1 font-code text-[11px] text-[#93a6be]">
-                            <Lock size={11} className="text-[#79aef4]" />
-                            <span className="truncate max-w-[160px] sm:max-w-xs">{cleanDomain}</span>
-                          </div>
-                          <span className="text-[10px] font-code uppercase tracking-wider text-[#687b92]">
-                            {site.category}
-                          </span>
-                        </div>
-
-                        {/* Interactive Viewport Mockup */}
-                        <div className="relative h-[340px] sm:h-[400px] w-full overflow-hidden bg-[#070b10]">
-                          <iframe
-                            src={site.url}
-                            title={site.title}
-                            className="w-full h-[700px] border-0 pointer-events-none scale-100 origin-top opacity-85 group-hover:opacity-95 transition-opacity"
-                            sandbox="allow-scripts allow-same-origin"
-                            loading="lazy"
-                          />
-
-                          {/* Interactive Click Shield Overlay */}
-                          <div
-                            onClick={() => handleWebsiteClick(site.url, site.title)}
-                            className="absolute inset-0 cursor-pointer flex flex-col justify-end p-4 bg-gradient-to-t from-[#080c11] via-[#080c11]/30 to-transparent"
-                          >
-                            <div className="flex items-center justify-between gap-3 rounded-xl border border-white/15 bg-[#0e1620]/95 p-3.5 sm:p-4 backdrop-blur-md shadow-lg transition-transform group-hover:-translate-y-0.5">
-                              <div>
-                                <h4 className="text-sm font-semibold text-[#e8f0fa] flex items-center gap-2">
-                                  {site.title}
-                                  {isLeadSubmitted ? (
-                                    <span className="text-[10px] font-code text-[#79aef4] border border-[#79aef4]/30 rounded px-1.5 py-0.5">
-                                      UNLOCKED
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] font-code text-[#8fa2b8] border border-white/10 rounded px-1.5 py-0.5">
-                                      RESTRICTED
-                                    </span>
-                                  )}
-                                </h4>
-                                <p className="text-[11px] text-[#8ea1b8] mt-0.5">{site.description || site.category}</p>
-                              </div>
-                              <div className="shrink-0">
-                                {isLeadSubmitted ? (
-                                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#79aef4]/40 bg-[#79aef4]/15 px-3 py-1.5 text-xs font-medium text-[#9ec4f5] shadow-[0_0_15px_rgba(121,174,244,0.2)]">
-                                    <ExternalLink size={13} />
-                                    {lang === 'ar' ? 'فتح الموقع' : lang === 'fr' ? 'Ouvrir le site' : 'Open Site'}
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-[#b8cce2] group-hover:border-[#79aef4]/50 group-hover:text-white transition">
-                                    <Lock size={12} className="text-[#79aef4]" />
-                                    {lang === 'ar' ? 'معاينة الموقع' : lang === 'fr' ? 'Accéder' : 'Preview Site'}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  ]).map((site) => (
+                    <ShowcaseCard
+                      key={site.id}
+                      site={site}
+                      lang={lang}
+                      isLeadSubmitted={isLeadSubmitted}
+                      onWebsiteClick={handleWebsiteClick}
+                    />
+                  ))}
                 </div>
               </section>
 
@@ -1101,6 +1037,130 @@ function Field({ label, id, type = 'text' }: { label: string; id: string; type?:
 
 function FooterCol({ title, items, onSelect }: { title: string; items: readonly string[]; onSelect: (index: number) => void }) {
   return <div><span className="eyebrow">{title}</span><div className="mt-4 flex flex-col gap-3">{items.map((item, i) => <button key={item} onClick={() => onSelect(i)} className="w-fit text-start text-xs text-[#8491a2] transition hover:text-[#dce7f4]" data-testid={`link-footer-${i}`}>{item}</button>)}</div></div>;
+}
+
+function ShowcaseCard({
+  site,
+  lang,
+  isLeadSubmitted,
+  onWebsiteClick,
+}: {
+  site: any;
+  lang: string;
+  isLeadSubmitted: boolean;
+  onWebsiteClick: (url: string, title: string) => void;
+}) {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const cleanDomain = site.url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  const snapshotUrl =
+    site.imageUrl ||
+    `https://api.microlink.io/?url=${encodeURIComponent(site.url)}&screenshot=true&embed=screenshot.url`;
+
+  return (
+    <div
+      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#0e1319] shadow-2xl transition duration-300 hover:border-[#79aef4]/50 flex flex-col cursor-pointer"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={() => onWebsiteClick(site.url, site.title)}
+    >
+      {/* Browser Window Mockup Header */}
+      <div className="flex items-center justify-between border-b border-white/10 bg-[#131922] px-4 py-2.5 z-10">
+        <div className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f56]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#27c93f]" />
+        </div>
+        <div className="flex items-center gap-1.5 rounded-md border border-white/10 bg-black/40 px-3 py-1 font-code text-[11px] text-[#93a6be]">
+          <Lock size={11} className="text-[#79aef4]" />
+          <span className="truncate max-w-[160px] sm:max-w-xs">{cleanDomain}</span>
+        </div>
+        <span className="text-[10px] font-code uppercase tracking-wider text-[#687b92]">
+          {site.category}
+        </span>
+      </div>
+
+      {/* Interactive Viewport Mockup */}
+      <div className="relative h-[340px] sm:h-[400px] w-full overflow-hidden bg-[#070b10]">
+        {/* Loading Spinner Skeleton */}
+        {!imgLoaded && !imgError && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#080d14] z-0">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#79aef4]/20 border-t-[#79aef4]" />
+            <span className="mt-3 font-code text-[11px] text-[#697d95]">
+              {lang === 'ar' ? 'جارٍ تحميل المعاينة المباشرة...' : lang === 'fr' ? 'Chargement de l’aperçu...' : 'Rendering live preview...'}
+            </span>
+          </div>
+        )}
+
+        {/* Snapshot Image with Smooth Hover Scrolling */}
+        {!imgError ? (
+          <div className="w-full h-full overflow-hidden">
+            <img
+              src={snapshotUrl}
+              alt={site.title}
+              onLoad={() => setImgLoaded(true)}
+              onError={() => {
+                setImgError(true);
+                setImgLoaded(true);
+              }}
+              className="w-full object-cover object-top origin-top will-change-transform"
+              style={{
+                transform: isHovered ? 'translateY(calc(-100% + 380px))' : 'translateY(0)',
+                opacity: imgLoaded ? 1 : 0,
+                transition: 'transform 6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease',
+              }}
+            />
+          </div>
+        ) : (
+          /* Graceful Fallback if site screenshot fails */
+          <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-[#101824] to-[#080d14]">
+            <Globe2 size={40} className="text-[#79aef4]/50 mb-3" />
+            <h4 className="text-base font-semibold text-[#e1ecf8]">{site.title}</h4>
+            <p className="text-xs text-[#71859c] mt-1">{cleanDomain}</p>
+            <span className="mt-4 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-[#9db4ce]">
+              {lang === 'ar' ? 'انقر لمعاينة المشروع' : lang === 'fr' ? 'Cliquer pour ouvrir le site' : 'Click to preview live project'}
+            </span>
+          </div>
+        )}
+
+        {/* Interactive Click Shield Overlay */}
+        <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-[#080c11] via-[#080c11]/40 to-transparent pointer-events-none">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-white/15 bg-[#0e1620]/95 p-3.5 sm:p-4 backdrop-blur-md shadow-lg transition-transform group-hover:-translate-y-0.5 pointer-events-auto">
+            <div>
+              <h4 className="text-sm font-semibold text-[#e8f0fa] flex items-center gap-2">
+                {site.title}
+                {isLeadSubmitted ? (
+                  <span className="text-[10px] font-code text-[#79aef4] border border-[#79aef4]/30 rounded px-1.5 py-0.5">
+                    UNLOCKED
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-code text-[#8fa2b8] border border-white/10 rounded px-1.5 py-0.5">
+                    RESTRICTED
+                  </span>
+                )}
+              </h4>
+              <p className="text-[11px] text-[#8ea1b8] mt-0.5">{site.description || site.category}</p>
+            </div>
+            <div className="shrink-0">
+              {isLeadSubmitted ? (
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#79aef4]/40 bg-[#79aef4]/15 px-3 py-1.5 text-xs font-medium text-[#9ec4f5] shadow-[0_0_15px_rgba(121,174,244,0.2)]">
+                  <ExternalLink size={13} />
+                  {lang === 'ar' ? 'فتح الموقع' : lang === 'fr' ? 'Ouvrir le site' : 'Open Site'}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-[#b8cce2] group-hover:border-[#79aef4]/50 group-hover:text-white transition">
+                  <Lock size={12} className="text-[#79aef4]" />
+                  {lang === 'ar' ? 'معاينة الموقع' : lang === 'fr' ? 'Accéder' : 'Preview Site'}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY

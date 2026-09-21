@@ -404,7 +404,7 @@ router.get("/admin/portfolio", async (_req, res) => {
 });
 
 router.post("/admin/portfolio", async (req, res) => {
-  const { title, url, category, description, displayOrder, isPublished } = req.body || {};
+  const { title, url, imageUrl, category, description, displayOrder, isPublished } = req.body || {};
   if (!title || !url) {
     res.status(400).json({ error: "Title and URL are required" });
     return;
@@ -414,6 +414,7 @@ router.post("/admin/portfolio", async (req, res) => {
     .values({
       title: title.trim(),
       url: url.trim(),
+      imageUrl: imageUrl ? imageUrl.trim() : null,
       category: category ? category.trim() : "Digital System",
       description: description ? description.trim() : null,
       displayOrder: typeof displayOrder === "number" ? displayOrder : 0,
@@ -425,10 +426,11 @@ router.post("/admin/portfolio", async (req, res) => {
 
 router.patch("/admin/portfolio/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const { title, url, category, description, displayOrder, isPublished } = req.body || {};
+  const { title, url, imageUrl, category, description, displayOrder, isPublished } = req.body || {};
   const updateData: Record<string, unknown> = {};
   if (title) updateData.title = title.trim();
   if (url) updateData.url = url.trim();
+  if (imageUrl !== undefined) updateData.imageUrl = imageUrl ? imageUrl.trim() : null;
   if (category) updateData.category = category.trim();
   if (description !== undefined) updateData.description = description;
   if (typeof displayOrder === "number") updateData.displayOrder = displayOrder;

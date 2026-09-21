@@ -96,6 +96,7 @@ export const portfolioWebsitesTable = pgTable("portfolio_websites", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   url: text("url").notNull(),
+  imageUrl: text("image_url"),
   category: text("category").notNull().default("Digital System"),
   description: text("description"),
   displayOrder: integer("display_order").notNull().default(0),

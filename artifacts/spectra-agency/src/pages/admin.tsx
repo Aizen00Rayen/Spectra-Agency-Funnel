@@ -2174,6 +2174,7 @@ export interface PortfolioItem {
   id: number;
   title: string;
   url: string;
+  imageUrl?: string | null;
   category: string;
   description?: string | null;
   displayOrder: number;
@@ -2190,6 +2191,8 @@ export function AdminPortfolio() {
   // Form state
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [category, setCategory] = useState("Digital System");
   const [description, setDescription] = useState("");
   const [isPublished, setIsPublished] = useState(true);
@@ -2223,6 +2226,34 @@ export function AdminPortfolio() {
   useEffect(() => {
     loadPortfolio();
   }, [headers]);
+
+  const handleImageUpload = async (file: File) => {
+    try {
+      setUploadingImage(true);
+      setFormFeedback(null);
+      const reqRes = await fetch("/api/storage/uploads/request-url", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ name: file.name, size: file.size }),
+      });
+      if (!reqRes.ok) throw new Error("Could not request upload URL");
+      const { uploadURL, objectPath } = await reqRes.json();
+
+      const uploadRes = await fetch(uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "image/png" },
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error("Failed to upload screenshot");
+
+      setImageUrl(objectPath);
+      setFormFeedback({ text: `Custom screenshot uploaded: ${file.name}`, kind: "success" });
+    } catch (err: any) {
+      setFormFeedback({ text: err.message || "Failed to upload screenshot image", kind: "error" });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const togglePublish = async (id: number, current: boolean) => {
     try {
@@ -2274,6 +2305,7 @@ export function AdminPortfolio() {
         body: JSON.stringify({
           title: title.trim(),
           url: formattedUrl,
+          imageUrl: imageUrl.trim() || undefined,
           category: category.trim() || "Digital System",
           description: description.trim() || undefined,
           isPublished,
@@ -2290,6 +2322,7 @@ export function AdminPortfolio() {
       setFormFeedback({ text: `Showcase website "${title}" added successfully!`, kind: "success" });
       setTitle("");
       setUrl("");
+      setImageUrl("");
       setDescription("");
       setCategory("Digital System");
     } catch (err: any) {
@@ -2329,6 +2362,21 @@ export function AdminPortfolio() {
             </button>
           </div>
 
+          <div
+            style={{
+              background: "rgba(116, 168, 235, 0.08)",
+              border: "1px solid rgba(116, 168, 235, 0.2)",
+              borderRadius: "8px",
+              padding: "10px 14px",
+              marginBottom: "14px",
+              fontSize: "11px",
+              color: "#9db9dc",
+              lineHeight: "1.5",
+            }}
+          >
+            <strong>✨ Anti-White Screen Rendering:</strong> Websites protected by strict headers (such as <code>X-Frame-Options: SAMEORIGIN</code> on Hostinger, Shopify, or Webflow) are automatically rendered using high-resolution live snapshots, eliminating blank white frames on the visitor page.
+          </div>
+
           {loading ? (
             <div className="admin-table-skeleton">
               {[1, 2, 3].map((i) => (
@@ -2347,47 +2395,95 @@ export function AdminPortfolio() {
             </div>
           ) : (
             <div className="admin-feedback-list">
-              {items.map((item) => (
-                <div key={item.id} className="admin-feedback-card">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <strong style={{ color: "#e4ecf5", fontSize: "14px" }}>{item.title}</strong>
-                        <span style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "4px", background: "rgba(116, 168, 235, 0.15)", color: "#8ab7ed" }}>
-                          {item.category}
-                        </span>
+              {items.map((item) => {
+                const previewImg =
+                  item.imageUrl ||
+                  `https://api.microlink.io/?url=${encodeURIComponent(item.url)}&screenshot=true&embed=screenshot.url`;
+                return (
+                  <div key={item.id} className="admin-feedback-card">
+                    <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                      {/* Live Thumbnail */}
+                      <div
+                        style={{
+                          width: "84px",
+                          height: "60px",
+                          borderRadius: "8px",
+                          overflow: "hidden",
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          background: "#0c131a",
+                          flexShrink: 0,
+                          position: "relative",
+                        }}
+                      >
+                        <img
+                          src={previewImg}
+                          alt={item.title}
+                          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = "none";
+                          }}
+                        />
                       </div>
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ color: "#74869c", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "4px", textDecoration: "none" }}
-                      >
-                        {item.url} <ArrowUpRight size={11} />
-                      </a>
-                      {item.description && (
-                        <p style={{ color: "#9cb1c9", fontSize: "12px", marginTop: "6px" }}>{item.description}</p>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <button
-                        onClick={() => togglePublish(item.id, item.isPublished)}
-                        className={`admin-icon-btn ${item.isPublished ? "is-active" : ""}`}
-                        title={item.isPublished ? "Published (Click to hide)" : "Hidden (Click to publish)"}
-                      >
-                        {item.isPublished ? <Eye size={14} /> : <EyeOff size={14} />}
-                      </button>
-                      <button
-                        onClick={() => deleteItem(item.id)}
-                        className="admin-icon-btn is-danger"
-                        title="Delete"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                          <strong style={{ color: "#e4ecf5", fontSize: "14px" }}>{item.title}</strong>
+                          <span
+                            style={{
+                              fontSize: "10px",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              background: "rgba(116, 168, 235, 0.15)",
+                              color: "#8ab7ed",
+                            }}
+                          >
+                            {item.category}
+                          </span>
+                        </div>
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            color: "#74869c",
+                            fontSize: "11px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            marginTop: "4px",
+                            textDecoration: "none",
+                            wordBreak: "break-all",
+                          }}
+                        >
+                          {item.url} <ArrowUpRight size={11} />
+                        </a>
+                        {item.description && (
+                          <p style={{ color: "#9cb1c9", fontSize: "12px", marginTop: "6px" }}>
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                        <button
+                          onClick={() => togglePublish(item.id, item.isPublished)}
+                          className={`admin-icon-btn ${item.isPublished ? "is-active" : ""}`}
+                          title={item.isPublished ? "Published (Click to hide)" : "Hidden (Click to publish)"}
+                        >
+                          {item.isPublished ? <Eye size={14} /> : <EyeOff size={14} />}
+                        </button>
+                        <button
+                          onClick={() => deleteItem(item.id)}
+                          className="admin-icon-btn is-danger"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
@@ -2409,7 +2505,7 @@ export function AdminPortfolio() {
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Nadir Capital Platform"
+                placeholder="e.g. The Results Academy"
               />
             </label>
 
@@ -2419,16 +2515,56 @@ export function AdminPortfolio() {
                 required
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="e.g. https://nadir.finance or www.example.com"
+                placeholder="e.g. https://theresults-academy.com/ or https://thebequer.tech/"
               />
             </label>
+
+            <div className="admin-field">
+              <span>Custom Screenshot / Preview Image (Optional)</span>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="Auto-generated live if left empty, or paste image URL"
+                  style={{ flex: 1 }}
+                />
+                <label
+                  className="admin-button admin-button-secondary"
+                  style={{
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontSize: "11px",
+                    padding: "8px 12px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <UploadCloud size={14} />
+                  {uploadingImage ? "Uploading..." : "Upload Screenshot"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploadingImage}
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(file);
+                    }}
+                  />
+                </label>
+              </div>
+              <small style={{ color: "#74869c", fontSize: "10px", marginTop: "4px", display: "block" }}>
+                Leave empty for automatic live snapshot generation, or upload a custom screenshot image.
+              </small>
+            </div>
 
             <label className="admin-field">
               <span>Category / Industry</span>
               <input
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                placeholder="e.g. Fintech / Web Application, E-commerce, SaaS"
+                placeholder="e.g. Cosmetics, E-learning, Fintech, SaaS"
               />
             </label>
 
@@ -2477,7 +2613,7 @@ export function AdminPortfolio() {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || uploadingImage}
               className="admin-button admin-button-primary admin-full-button"
             >
               <Plus size={15} /> {submitting ? "Adding..." : "Add to Showcase"}
