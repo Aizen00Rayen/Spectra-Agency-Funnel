@@ -54,4 +54,26 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const clientDistCandidates = [
+  path.resolve(process.cwd(), "../spectra-agency/dist/public"),
+  path.resolve(process.cwd(), "artifacts/spectra-agency/dist/public"),
+  path.resolve(__dirname, "../../spectra-agency/dist/public"),
+];
+
+const clientDist = clientDistCandidates.find((dir) => fs.existsSync(dir));
+if (clientDist) {
+  app.use(express.static(clientDist));
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || req.path.startsWith("/api")) return next();
+    res.sendFile(path.join(clientDist, "index.html"));
+  });
+}
+
 export default app;
