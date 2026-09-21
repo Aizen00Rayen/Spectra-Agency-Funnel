@@ -335,7 +335,11 @@ function PublicHome() {
     setPhoneError(false);
     setSubmittingBooking(true);
     try {
-      // 1. Create Lead
+      // 1. Create Lead with sanitized inputs
+      const desc = projectDescription.trim();
+      const validDescription = desc.length >= 10 ? desc : (desc ? `${desc} (strategic consultation)` : 'Strategic consultation request');
+      const services = selectedServices.length > 0 ? selectedServices : ['Digital Strategy'];
+
       const leadRes = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -344,13 +348,13 @@ function PublicHome() {
           company: companyName.trim(),
           email: clientEmail.trim(),
           phone: clientPhone.trim(),
-          projectDescription: projectDescription.trim() || 'Strategic consultation request',
-          interestedServices: selectedServices,
+          projectDescription: validDescription,
+          interestedServices: services,
         }),
       });
       if (!leadRes.ok) {
         const err = await leadRes.json().catch(() => ({}));
-        throw new Error(err.error || 'Lead registration failed');
+        throw new Error(err.error || (lang === 'ar' ? 'فشل تسجيل الطلب' : lang === 'fr' ? 'Échec de l’enregistrement' : 'Lead registration failed'));
       }
       const lead = await leadRes.json();
 
@@ -390,9 +394,9 @@ function PublicHome() {
         slot: slotLabel || `${currentDay?.label || 'Upcoming week'} · 30 min`,
       });
       setBookingSuccess(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Could not complete booking. Please try again.');
+      alert(err?.message || (lang === 'ar' ? 'تعذر إتمام الحجز، يرجى المحاولة مرة أخرى.' : lang === 'fr' ? 'Impossible de finaliser la réservation. Veuillez réessayer.' : 'Could not complete booking. Please try again.'));
     } finally {
       setSubmittingBooking(false);
     }

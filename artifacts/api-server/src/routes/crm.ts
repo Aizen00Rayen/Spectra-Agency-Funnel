@@ -180,21 +180,64 @@ router.get("/public/config", async (req, res) => {
 });
 
 router.post("/leads", async (req, res) => {
-  const input = CreateLeadBody.parse(req.body);
-  if (!input.phone || !input.phone.trim()) {
-    res.status(400).json({ error: "Phone number is required." });
-    return;
+  try {
+    const body = req.body || {};
+    const name = String(body.name || "").trim();
+    const company = String(body.company || "").trim();
+    const email = String(body.email || "").trim();
+    const phone = String(body.phone || "").trim();
+    let projectDescription = String(body.projectDescription || "").trim();
+    const businessType = body.businessType ? String(body.businessType).trim() : null;
+    const budget = body.budget ? String(body.budget).trim() : null;
+    let interestedServices = Array.isArray(body.interestedServices) ? body.interestedServices : [];
+
+    if (!name) {
+      res.status(400).json({ error: "Name is required." });
+      return;
+    }
+    if (!company) {
+      res.status(400).json({ error: "Company name is required." });
+      return;
+    }
+    if (!email || !email.includes("@")) {
+      res.status(400).json({ error: "A valid email address is required." });
+      return;
+    }
+    if (!phone) {
+      res.status(400).json({ error: "Phone number is required." });
+      return;
+    }
+
+    if (!projectDescription) {
+      projectDescription = "Strategic consultation request";
+    } else if (projectDescription.length < 10) {
+      projectDescription = `${projectDescription} (strategic consultation)`;
+    }
+
+    if (interestedServices.length === 0) {
+      interestedServices = ["Digital Strategy"];
+    }
+
+    const [lead] = await db
+      .insert(leadsTable)
+      .values({
+        name,
+        company,
+        email,
+        phone,
+        businessType,
+        budget,
+        projectDescription,
+        interestedServices,
+        status: "registered",
+      })
+      .returning();
+
+    res.status(201).json(serializeLead(lead));
+  } catch (err: any) {
+    req.log.error({ err }, "Lead creation error");
+    res.status(400).json({ error: err.message || "Failed to create lead" });
   }
-  const [lead] = await db
-    .insert(leadsTable)
-    .values({
-      ...input,
-      phone: input.phone.trim(),
-      interestedServices: input.interestedServices ?? [],
-      status: "registered",
-    })
-    .returning();
-  res.status(201).json(CreateLeadResponse.parse(serializeLead(lead)));
 });
 
 router.get("/public/portfolio", async (_req, res) => {
@@ -213,48 +256,53 @@ router.get("/public/availability", async (req, res) => {
 });
 
 router.post("/bookings", async (req, res) => {
-  const input = CreateBookingBody.parse(req.body);
-  const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, input.leadId)).limit(1);
-  if (!lead) {
-    res.status(404).json({ error: "Lead not found" });
-    return;
+  try {
+    const input = CreateBookingBody.parse(req.body);
+    const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, input.leadId)).limit(1);
+    if (!lead) {
+      res.status(404).json({ error: "Lead not found" });
+      return;
+    }
+
+    const startsAt = new Date(input.startsAt);
+    const endsAt = new Date(input.endsAt);
+    if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) {
+      res.status(400).json({ error: "Invalid booking window" });
+      return;
+    }
+
+    const overlaps = await db
+      .select()
+      .from(bookingsTable)
+      .where(ne(bookingsTable.status, "cancelled"));
+    if (overlaps.some((booking) => booking.startsAt < endsAt && booking.endsAt > startsAt)) {
+      res.status(409).json({ error: "That time is no longer available" });
+      return;
+    }
+
+    const [booking] = await db
+      .insert(bookingsTable)
+      .values({
+        leadId: lead.id,
+        clientName: lead.name,
+        clientEmail: lead.email,
+        startsAt,
+        endsAt,
+        timezone: input.timezone,
+        status: "requested",
+      })
+      .returning();
+
+    await db
+      .update(leadsTable)
+      .set({ status: "reviewing", updatedAt: new Date() })
+      .where(eq(leadsTable.id, lead.id));
+
+    res.status(201).json(CreateBookingResponse.parse(serializeBooking(booking)));
+  } catch (err: any) {
+    req.log.error({ err }, "Booking creation error");
+    res.status(400).json({ error: err.message || "Failed to create booking" });
   }
-
-  const startsAt = new Date(input.startsAt);
-  const endsAt = new Date(input.endsAt);
-  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) {
-    res.status(400).json({ error: "Invalid booking window" });
-    return;
-  }
-
-  const overlaps = await db
-    .select()
-    .from(bookingsTable)
-    .where(ne(bookingsTable.status, "cancelled"));
-  if (overlaps.some((booking) => booking.startsAt < endsAt && booking.endsAt > startsAt)) {
-    res.status(409).json({ error: "That time is no longer available" });
-    return;
-  }
-
-  const [booking] = await db
-    .insert(bookingsTable)
-    .values({
-      leadId: lead.id,
-      clientName: lead.name,
-      clientEmail: lead.email,
-      startsAt,
-      endsAt,
-      timezone: input.timezone,
-      status: "requested",
-    })
-    .returning();
-
-  await db
-    .update(leadsTable)
-    .set({ status: "reviewing", updatedAt: new Date() })
-    .where(eq(leadsTable.id, lead.id));
-
-  res.status(201).json(CreateBookingResponse.parse(serializeBooking(booking)));
 });
 
 router.get("/public/testimonials", async (req, res) => {
