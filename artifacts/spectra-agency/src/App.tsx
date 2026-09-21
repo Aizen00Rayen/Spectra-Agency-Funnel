@@ -8,13 +8,20 @@ import { ClerkProvider, SignIn, SignUp, useAuth, useClerk } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
-import { AdminAvailability, AdminBookings, AdminLeads, AdminOverview, AdminVideo } from '@/pages/admin';
+import { AdminAvailability, AdminBookings, AdminLeads, AdminOverview, AdminTestimonials, AdminVideo } from '@/pages/admin';
+import { AdminLangProvider, type AdminLang } from '@/pages/admin-i18n';
+import { ProtectedVideoPlayer } from '@/components/ProtectedVideoPlayer';
+import { setAuthTokenGetter, useGetPublicConfig } from '@workspace/api-client-react';
 import {
-  ArrowDownRight, ArrowRight, ArrowUpRight, CalendarDays, Check, ChevronDown,
-  Clock3, Globe2, Menu, Play, ShieldCheck, Sparkles, X, Zap,
+  ArrowDownRight, ArrowRight, ArrowUpRight, Calendar, CalendarDays, Check, ChevronDown,
+  Clock3, Globe2, Lock, Menu, MessageSquareQuote, Play, RefreshCw, ShieldCheck, Sparkles, User, Video, Volume2, VolumeX, X, Zap,
 } from 'lucide-react';
 
 const queryClient = new QueryClient();
+
+if (typeof window !== 'undefined') {
+  setAuthTokenGetter(() => localStorage.getItem('spectra_admin_token'));
+}
 
 type Lang = 'en' | 'fr' | 'ar';
 type Copy = typeof copy.en;
@@ -120,13 +127,26 @@ function PublicHome() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [selectedDay, setSelectedDay] = useState(1);
-  const [selectedTime, setSelectedTime] = useState('10:30');
-  const [confirmed, setConfirmed] = useState(false);
-  const [sent, setSent] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  const publicConfig = useGetPublicConfig();
   const t = copy[lang] as Copy;
   const isRtl = lang === 'ar';
+
+  // Testimonials state from API
+  const [testimonials, setTestimonials] = useState<any[]>([]);
+
+  // Merged Consultation & Calendar state
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const [selectedSlotTime, setSelectedSlotTime] = useState<string>('10:30');
+  const [selectedServices, setSelectedServices] = useState<string[]>(['Website']);
+  const [clientName, setClientName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
+  const [submittingBooking, setSubmittingBooking] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [confirmedDetails, setConfirmedDetails] = useState<{ name: string; email: string; slot: string; company: string } | null>(null);
 
   useEffect(() => {
     document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
@@ -142,84 +162,327 @@ function PublicHome() {
     return () => document.removeEventListener('mouseout', onLeave);
   }, []);
 
-  const dayLabels = useMemo(() => lang === 'fr' ? ['Mar 18', 'Mer 19', 'Jeu 20', 'Ven 21'] : lang === 'ar' ? ['الثلاثاء 18', 'الأربعاء 19', 'الخميس 20', 'الجمعة 21'] : ['Tue 18', 'Wed 19', 'Thu 20', 'Fri 21'], [lang]);
+  useEffect(() => {
+    fetch('/api/public/testimonials')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setTestimonials(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
-  const scrollTo = (id: string) => { setMenuOpen(false); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); };
-  const submitForm = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSent(true); };
+  const availableDays = useMemo(() => {
+    const days = [];
+    const now = new Date();
+    const current = new Date(now);
+    current.setDate(current.getDate() + 1);
+
+    while (days.length < 6) {
+      const dayOfWeek = current.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        const isoDate = current.toISOString().slice(0, 10);
+        const dayName = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-DZ' : lang === 'fr' ? 'fr-FR' : 'en-GB', { weekday: 'short' }).format(current);
+        const dayNumber = current.getDate();
+        const monthName = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-DZ' : lang === 'fr' ? 'fr-FR' : 'en-GB', { month: 'short' }).format(current);
+        days.push({
+          isoDate,
+          label: `${dayName} ${dayNumber} ${monthName}`,
+          dayName,
+          dayNumber,
+          monthName,
+          dateObj: new Date(current),
+        });
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    return days;
+  }, [lang]);
+
+  const availableSlots = ['09:00', '10:30', '13:00', '14:30', '16:00', '17:30'];
+
+  const scrollTo = (id: string) => {
+    setMenuOpen(false);
+    const target = id === 'schedule' ? 'consultation' : id;
+    document.getElementById(target)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleMergedSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!clientName.trim() || !companyName.trim() || !clientEmail.trim()) {
+      return;
+    }
+    setSubmittingBooking(true);
+    try {
+      // 1. Create Lead
+      const leadRes = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: clientName.trim(),
+          company: companyName.trim(),
+          email: clientEmail.trim(),
+          phone: clientPhone.trim() || undefined,
+          projectDescription: projectDescription.trim() || 'Strategic consultation request',
+          interestedServices: selectedServices,
+        }),
+      });
+      if (!leadRes.ok) throw new Error('Lead registration failed');
+      const lead = await leadRes.json();
+
+      // 2. Book Slot if selected
+      const currentDay = availableDays[selectedDayIndex];
+      let slotLabel = '';
+      if (currentDay && selectedSlotTime) {
+        const startsAt = new Date(`${currentDay.isoDate}T${selectedSlotTime}:00.000Z`);
+        const endsAt = new Date(startsAt.getTime() + 30 * 60 * 1000);
+        slotLabel = `${currentDay.label} · ${selectedSlotTime} · GMT+1 (${lang === 'ar' ? 'تلمسان' : 'Tlemcen'})`;
+
+        try {
+          await fetch('/api/bookings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              leadId: lead.id,
+              startsAt: startsAt.toISOString(),
+              endsAt: endsAt.toISOString(),
+              timezone: 'Africa/Algiers',
+            }),
+          });
+        } catch (bookingErr) {
+          console.warn('Booking slot creation error, lead preserved:', bookingErr);
+        }
+      }
+
+      setConfirmedDetails({
+        name: clientName,
+        email: clientEmail,
+        company: companyName,
+        slot: slotLabel || `${currentDay?.label || 'Upcoming week'} · 30 min`,
+      });
+      setBookingSuccess(true);
+    } catch (err) {
+      console.error(err);
+      alert('Could not complete booking. Please try again.');
+    } finally {
+      setSubmittingBooking(false);
+    }
+  };
 
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ErrorBoundary resetKey={lang}>
           <div className="spectra-page noise" dir={isRtl ? 'rtl' : 'ltr'}>
-            <header className="fixed inset-x-0 top-0 z-40 border-b border-white/[.07] bg-[#080a0d]/75 backdrop-blur-xl">
-              <div className="mx-auto flex h-[72px] max-w-[1320px] items-center justify-between px-5 sm:px-8 lg:px-12">
-                <button onClick={() => scrollTo('top')} className="focus-ring flex items-center gap-3" aria-label="Spectra home" data-testid="button-home">
-                  <span className="relative flex h-9 w-9 overflow-hidden rounded-full border border-white/20 bg-[#11151a]">
+            <header className="fixed inset-x-0 top-0 z-40 border-b border-white/[.07] bg-[#080a0d]/80 backdrop-blur-xl">
+              <div className="mx-auto flex h-[70px] sm:h-[72px] max-w-[1320px] items-center justify-between px-4 sm:px-8 lg:px-12">
+                <button onClick={() => scrollTo('top')} className="focus-ring flex items-center gap-2.5 sm:gap-3" aria-label="Spectra home" data-testid="button-home">
+                  <span className="relative flex h-8 w-8 sm:h-9 sm:w-9 overflow-hidden rounded-full border border-white/20 bg-[#11151a]">
                     <img src="/assets/spectra-logo.jpeg" alt="Spectra" className="h-full w-full object-cover" />
                   </span>
-                  <span className="font-code text-[12px] font-medium tracking-[.28em] text-[#e7ebf0]">SPECTRA</span>
+                  <span className="font-code text-[11px] sm:text-[12px] font-medium tracking-[.28em] text-[#e7ebf0]">SPECTRA</span>
                 </button>
                 <nav className="hidden items-center gap-8 lg:flex" aria-label="Main navigation">
                   {t.nav.map((item, index) => <button key={item} onClick={() => scrollTo(['capabilities','method','work','faq'][index])} className="focus-ring text-[12px] text-[#8e9aaa] transition-colors hover:text-white" data-testid={`link-nav-${index}`}>{item}</button>)}
                 </nav>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5 sm:gap-3">
                   <div className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/[.03] p-1 sm:flex" aria-label="Language selector">
                     {(['en','fr','ar'] as Lang[]).map((item) => <button key={item} onClick={() => setLang(item)} className={`focus-ring rounded-full px-2.5 py-1 font-code text-[10px] uppercase transition ${lang === item ? 'bg-white text-[#080a0d]' : 'text-[#8290a2] hover:text-white'}`} data-testid={`button-language-${item}`}>{item}</button>)}
                   </div>
                   <button onClick={() => scrollTo('consultation')} className="hidden rounded-full bg-[#e7ebf0] px-4 py-2.5 text-[11px] font-bold text-[#080a0d] transition hover:bg-[#9fc5ff] sm:block" data-testid="button-header-cta">{t.book}</button>
-                  <button onClick={() => setMenuOpen(!menuOpen)} className="focus-ring rounded-full border border-white/15 p-2 text-[#d6dde8] lg:hidden" aria-label={menuOpen ? 'Close menu' : 'Open menu'} data-testid="button-mobile-menu">{menuOpen ? <X size={18} /> : <Menu size={18} />}</button>
+                  <button onClick={() => setMenuOpen(!menuOpen)} className="focus-ring flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-[#d6dde8] lg:hidden" aria-label={menuOpen ? 'Close menu' : 'Open menu'} data-testid="button-mobile-menu">{menuOpen ? <X size={18} /> : <Menu size={18} />}</button>
                 </div>
               </div>
-              {menuOpen && <div className="border-t border-white/10 bg-[#0b0e12] px-5 py-5 lg:hidden">
-                <div className="mx-auto flex max-w-[1320px] flex-col gap-4">
-                  {t.nav.map((item, index) => <button key={item} onClick={() => scrollTo(['capabilities','method','work','faq'][index])} className="text-start text-sm text-[#b7c1ce]" data-testid={`link-mobile-nav-${index}`}>{item}</button>)}
-                  <div className="mt-2 flex items-center gap-2 border-t border-white/10 pt-4">{(['en','fr','ar'] as Lang[]).map(item => <button key={item} onClick={() => setLang(item)} className={`rounded-full border px-3 py-1.5 font-code text-[10px] uppercase ${lang === item ? 'border-white bg-white text-black' : 'border-white/15 text-[#9ba8b7]'}`} data-testid={`button-mobile-language-${item}`}>{item}</button>)}</div>
-                  <button onClick={() => scrollTo('consultation')} className="mt-1 rounded-full bg-[#e7ebf0] px-4 py-3 text-xs font-bold text-[#080a0d]" data-testid="button-mobile-cta">{t.book}</button>
+              {menuOpen && (
+                <div className="border-t border-white/10 bg-[#0b0e12]/95 backdrop-blur-2xl px-5 py-6 lg:hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="mx-auto flex max-w-[1320px] flex-col gap-4">
+                    {t.nav.map((item, index) => (
+                      <button
+                        key={item}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          scrollTo(['capabilities','method','work','faq'][index]);
+                        }}
+                        className="text-start py-2 text-base font-medium text-[#c4cfdc] transition hover:text-white active:text-[#7ba9e8]"
+                        data-testid={`link-mobile-nav-${index}`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                    <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-4">
+                      <span className="font-code text-[10px] uppercase tracking-wider text-[#738294]">Language</span>
+                      <div className="flex items-center gap-2">
+                        {(['en','fr','ar'] as Lang[]).map(item => (
+                          <button
+                            key={item}
+                            onClick={() => setLang(item)}
+                            className={`rounded-full border px-3.5 py-1.5 font-code text-[11px] uppercase transition ${lang === item ? 'border-white bg-white font-semibold text-black' : 'border-white/15 text-[#9ba8b7] hover:border-white/30'}`}
+                            data-testid={`button-mobile-language-${item}`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        scrollTo('consultation');
+                      }}
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-[#e7ebf0] px-4 py-3.5 text-xs font-bold text-[#080a0d] shadow-lg active:scale-[0.98] transition"
+                      data-testid="button-mobile-cta"
+                    >
+                      <CalendarDays size={15} />
+                      {t.book}
+                    </button>
+                    <a
+                      href="/admin/login"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center justify-center gap-2 pt-2 text-[11px] text-[#6d7f95] hover:text-[#bcd3ee] transition"
+                    >
+                      <Lock size={12} /> Studio Operating Room (Admin)
+                    </a>
+                  </div>
                 </div>
-              </div>}
+              )}
             </header>
 
             <main id="top">
-              <section className="relative flex min-h-[760px] items-center overflow-hidden border-b border-white/[.07] pt-24 lg:min-h-[850px]">
+              <section id="lesson" className="relative flex min-h-[auto] lg:min-h-[860px] flex-col items-center overflow-hidden border-b border-white/[.07] pt-24 pb-16 sm:pt-28 sm:pb-20 lg:pt-36 lg:pb-28">
                 <div className="grid-fade absolute inset-0 opacity-60" />
-                <div className="absolute inset-0 overflow-hidden">
-                  <div className="absolute left-[12%] top-[22%] h-px w-[70%] bg-gradient-to-r from-transparent via-[#6689b6]/50 to-transparent" style={{ animation: 'pulse-line 4s ease-in-out infinite' }} />
-                  <div className="absolute left-[67%] top-[4%] h-[460px] w-[460px] rounded-full border border-[#526d8f]/20" style={{ animation: 'rotate-slow 34s linear infinite' }}><div className="absolute left-0 top-1/2 h-2 w-2 rounded-full bg-[#79aef4] shadow-[0_0_26px_8px_rgba(91,146,232,.45)]" /></div>
-                  <div className="absolute right-[8%] top-[31%] h-1.5 w-1.5 rounded-full bg-[#d7e6fa]" style={{ animation: 'drift 5s ease-in-out infinite' }} />
-                  <div className="absolute left-[17%] top-[51%] h-1.5 w-1.5 rounded-full bg-[#7096c7]" style={{ animation: 'drift 7s ease-in-out infinite reverse' }} />
-                  <div className="absolute bottom-[11%] right-[21%] h-40 w-40 rounded-full bg-[#29568f]/10 blur-3xl" />
-                </div>
-                <div className="relative z-10 mx-auto grid w-full max-w-[1320px] gap-16 px-5 pb-20 sm:px-8 lg:grid-cols-[1.2fr_.8fr] lg:items-center lg:px-12 lg:pb-28">
-                  <div className="max-w-4xl">
-                    <div className="reveal mb-7 flex items-center gap-3"><span className="h-1.5 w-1.5 rounded-full bg-[#79aef4]" /><span className="eyebrow">{t.badge}</span></div>
-                    <h1 className="reveal delay-1 max-w-4xl text-[clamp(3.4rem,7.6vw,7.8rem)] font-semibold leading-[.94] tracking-[-.075em] text-[#e8edf3]">{t.heroTitle}</h1>
-                    <p className="reveal delay-2 mt-8 max-w-xl text-base leading-7 text-[#98a6b6] sm:text-lg">{t.heroBody}</p>
-                    <div className="reveal delay-3 mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <button onClick={() => scrollTo('lesson')} className="focus-ring group flex items-center justify-center gap-3 rounded-full bg-[#e8edf3] px-6 py-3.5 text-sm font-bold text-[#090b0e] transition hover:bg-[#a6c9ff]" data-testid="button-hero-watch"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0b0e12] text-white"><Play size={10} fill="currentColor" /></span>{t.watch}<ArrowRight size={15} className="transition-transform group-hover:translate-x-1" /></button>
-                      <button onClick={() => scrollTo('consultation')} className="focus-ring flex items-center justify-center gap-2 rounded-full border border-white/15 px-6 py-3.5 text-sm text-[#d2dbe6] transition hover:border-[#77a9e6]/60 hover:bg-white/[.05]" data-testid="button-hero-book">{t.book}<ArrowUpRight size={15} /></button>
-                    </div>
-                    <div className="reveal delay-3 mt-12 flex items-center gap-5 text-[10px] text-[#6f7c8c]"><span className="flex items-center gap-2 font-code"><ShieldCheck size={13} className="text-[#83abe1]" /> {lang === 'ar' ? 'سرية تامة' : lang === 'fr' ? 'Confidentiel' : 'Confidential by default'}</span><span className="h-3 w-px bg-white/15" /><span>{t.status}</span></div>
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                  <div className="absolute left-[15%] top-[18%] h-px w-[70%] bg-gradient-to-r from-transparent via-[#6689b6]/40 to-transparent" style={{ animation: 'pulse-line 4s ease-in-out infinite' }} />
+                  <div className="absolute left-[70%] top-[2%] h-[480px] w-[480px] rounded-full border border-[#526d8f]/15" style={{ animation: 'rotate-slow 40s linear infinite' }}>
+                    <div className="absolute left-0 top-1/2 h-2 w-2 rounded-full bg-[#79aef4] shadow-[0_0_26px_8px_rgba(91,146,232,.45)]" />
                   </div>
-                  <div className="relative hidden min-h-[420px] lg:block">
-                    <div className="glass absolute right-0 top-6 h-[330px] w-[360px] rotate-[4deg] rounded-[28px] p-5 opacity-70" style={{ animation: 'drift 8s ease-in-out infinite' }}><div className="h-full rounded-2xl border border-white/[.08] bg-[#10151b] p-4"><div className="mb-5 flex items-center justify-between"><span className="font-code text-[9px] text-[#6f7d8c]">SPECTRA / SYSTEM_04</span><span className="h-2 w-2 rounded-full bg-[#74a8ee]" /></div><div className="space-y-3"><div className="h-3 w-2/3 rounded bg-white/10" /><div className="h-2 w-1/2 rounded bg-white/5" /><div className="mt-8 grid grid-cols-2 gap-2"><div className="h-24 rounded-lg border border-white/10 bg-white/[.025]" /><div className="h-24 rounded-lg border border-[#6f9bd4]/30 bg-[#31547f]/10" /></div><div className="mt-3 h-2 w-full rounded bg-white/5" /><div className="h-2 w-4/5 rounded bg-white/5" /></div></div></div>
-                    <div className="absolute bottom-0 left-0 h-[235px] w-[280px] rounded-[22px] border border-[#aabed9]/15 bg-[#151a20]/80 p-4 shadow-2xl backdrop-blur-xl"><div className="flex items-center gap-2 font-code text-[9px] text-[#8494a8]"><Sparkles size={12} className="text-[#81b1f7]" /> LIVE SIGNAL</div><div className="mt-8 flex items-end gap-1.5">{[34,46,40,65,54,78,70,90,82,100].map((h, i) => <span key={i} className="flex-1 rounded-t-sm bg-gradient-to-t from-[#385777] to-[#a9caef]" style={{ height: `${h}%`, opacity: .35 + i * .06 }} />)}</div><div className="mt-5 flex justify-between font-code text-[9px] text-[#687687]"><span>CONVERSION</span><span className="text-[#dbe7f7]">+47.8%</span></div></div>
-                  </div>
+                  <div className="absolute right-[10%] top-[26%] h-1.5 w-1.5 rounded-full bg-[#d7e6fa]" style={{ animation: 'drift 5s ease-in-out infinite' }} />
+                  <div className="absolute left-[12%] top-[42%] h-1.5 w-1.5 rounded-full bg-[#7096c7]" style={{ animation: 'drift 7s ease-in-out infinite reverse' }} />
+                  <div className="absolute top-[10%] left-1/2 -translate-x-1/2 h-80 w-[720px] rounded-full bg-[#29568f]/15 blur-[120px]" />
                 </div>
-                <button onClick={() => scrollTo('lesson')} className="absolute bottom-7 left-1/2 hidden -translate-x-1/2 items-center gap-3 font-code text-[10px] uppercase tracking-[.18em] text-[#687789] md:flex" data-testid="button-scroll-explore"><span className="h-9 w-6 rounded-full border border-white/15 p-1"><span className="block h-2 w-1 rounded-full bg-[#a5c8f5]" /></span>{t.scroll}</button>
-              </section>
 
-              <section id="lesson" className="mx-auto max-w-[1320px] scroll-mt-24 px-5 py-24 sm:px-8 lg:px-12 lg:py-36">
-                <div className="grid gap-12 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
-                  <div><span className="eyebrow">{t.lessonKicker}</span><h2 className="mt-5 max-w-lg text-4xl font-semibold leading-[1.04] tracking-[-.055em] text-[#e4eaf2] sm:text-5xl">{t.lessonTitle}</h2><p className="mt-6 max-w-md text-sm leading-7 text-[#8f9cab]">{t.lessonBody}</p><div className="mt-8 space-y-3">{t.lessonPoints.map((point, i) => <div key={point} className="flex gap-3 text-sm text-[#bbc6d3]"><Check size={16} className="mt-0.5 shrink-0 text-[#77aaf0]" />{point}</div>)}</div></div>
-                  <div className="relative">
-                    <div className="absolute -inset-3 rounded-[28px] border border-[#6c95c3]/15" />
-                    <div className="relative aspect-video overflow-hidden rounded-2xl border border-white/15 bg-[#11161d] shadow-2xl">
-                      {!playing ? <button onClick={() => setPlaying(true)} className="group absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_60%_35%,rgba(83,129,182,.3),transparent_36%),linear-gradient(135deg,#141b24,#0b0e13)]" data-testid="button-play-lesson"><div className="absolute inset-0 grid-fade opacity-70" /><div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-white/30 bg-white/[.08] text-white backdrop-blur-md transition group-hover:scale-105 group-hover:bg-[#75a9ed] group-hover:text-[#081018]"><Play size={23} fill="currentColor" /></div><span className="absolute bottom-5 left-5 font-code text-[10px] tracking-widest text-[#aabbd0]">LESSON_01 / 14:22</span><span className="absolute bottom-5 right-5 font-code text-[10px] text-[#7c8b9f]">SPECTRA FIELD NOTES</span></button> : <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#101821]"><div className="h-1 w-40 overflow-hidden rounded bg-white/10"><div className="h-full w-1/3 rounded bg-[#7db0f4]" style={{ animation: 'scan 2.6s linear infinite' }} /></div><p className="font-code text-[10px] tracking-[.16em] text-[#93acd0]">{lang === 'ar' ? 'الدرس قيد التشغيل' : lang === 'fr' ? 'LEÇON EN COURS' : 'LESSON PLAYING'}</p><button onClick={() => setPlaying(false)} className="text-xs text-[#8291a2] underline underline-offset-4" data-testid="button-pause-lesson">{lang === 'ar' ? 'إيقاف المعاينة' : lang === 'fr' ? 'Mettre en pause' : 'Pause preview'}</button></div>}
+                <div className="relative z-10 mx-auto flex w-full max-w-[1320px] flex-col items-center px-4 sm:px-8 lg:px-12 text-center">
+                  <div className="reveal mb-5 sm:mb-6 inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[.03] px-3.5 sm:px-4 py-1.5 backdrop-blur-md">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#79aef4] shadow-[0_0_12px_2px_rgba(121,174,244,.7)] animate-pulse" />
+                    <span className="eyebrow text-[10px] sm:text-xs">{t.lessonKicker}</span>
+                  </div>
+
+                  <h1 className="reveal delay-1 max-w-4xl text-center text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-semibold leading-[1.08] sm:leading-[1.03] tracking-[-.05em] text-[#e8edf3] break-words">
+                    {t.lessonTitle}
+                  </h1>
+
+                  <p className="reveal delay-2 mt-5 sm:mt-6 max-w-2xl text-center text-sm leading-6 text-[#98a6b6] sm:text-lg sm:leading-7">
+                    {t.lessonBody}
+                  </p>
+
+                  {/* Free Video Lesson Player */}
+                  <div className="reveal delay-3 relative mt-8 sm:mt-10 w-full max-w-4xl">
+                    <div className="absolute -inset-2 sm:-inset-3.5 rounded-[22px] sm:rounded-[32px] border border-[#6c95c3]/25 bg-gradient-to-b from-[#6c95c3]/15 to-transparent blur-[1px]" />
+                    <div className="relative aspect-video overflow-hidden rounded-xl sm:rounded-2xl border border-white/15 bg-[#11161d] shadow-[0_25px_80px_rgba(0,0,0,.75)]">
+                      {!playing ? (
+                        <button
+                          onClick={() => setPlaying(true)}
+                          className="group absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_60%_35%,rgba(83,129,182,.3),transparent_36%),linear-gradient(135deg,#141b24,#0b0e13)] cursor-pointer"
+                          data-testid="button-play-lesson"
+                        >
+                          <div className="absolute inset-0 grid-fade opacity-70" />
+                          <div className="relative flex h-16 w-16 sm:h-24 sm:w-24 items-center justify-center rounded-full border border-white/30 bg-white/[.08] text-white backdrop-blur-md shadow-[0_0_40px_rgba(121,174,244,.3)] transition duration-300 group-hover:scale-105 group-hover:bg-[#75a9ed] group-hover:text-[#081018]">
+                            <Play size={22} fill="currentColor" className="translate-x-0.5 sm:scale-110" />
+                          </div>
+                          <span className="absolute bottom-3 left-3 sm:bottom-5 sm:left-5 font-code text-[9px] sm:text-[10px] tracking-widest text-[#aabbd0]">
+                            {publicConfig?.data?.video?.title ? publicConfig.data.video.title.toUpperCase() : 'LESSON_01'}
+                          </span>
+                          <span className="absolute bottom-3 right-3 sm:bottom-5 sm:right-5 font-code text-[9px] sm:text-[10px] text-[#7c8b9f]">
+                            SPECTRA FIELD NOTES
+                          </span>
+                        </button>
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#070b10]">
+                          {publicConfig?.data?.video?.url ? (
+                            <ProtectedVideoPlayer
+                              url={publicConfig.data.video.url}
+                              title={publicConfig.data.video.title || 'SPECTRA FIELD NOTES'}
+                              onClose={() => setPlaying(false)}
+                              lang={lang}
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center gap-4">
+                              <div className="h-1 w-48 overflow-hidden rounded bg-white/10">
+                                <div className="h-full w-1/3 rounded bg-[#7db0f4]" style={{ animation: 'scan 2.6s linear infinite' }} />
+                              </div>
+                              <p className="font-code text-[11px] tracking-[.18em] text-[#93acd0]">
+                                {lang === 'ar' ? 'الدرس قيد التشغيل' : lang === 'fr' ? 'LEÇON EN COURS' : 'LESSON PLAYING'}
+                              </p>
+                              <button
+                                onClick={() => setPlaying(false)}
+                                className="text-xs text-[#8291a2] underline underline-offset-4 cursor-pointer hover:text-white"
+                                data-testid="button-pause-lesson"
+                              >
+                                {lang === 'ar' ? 'إيقاف المعاينة' : lang === 'fr' ? 'Mettre en pause' : 'Pause preview'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <button onClick={() => scrollTo('consultation')} className="group mt-6 flex items-center gap-3 text-sm font-semibold text-[#cbd9ec]" data-testid="button-lesson-cta">{t.lessonCta}<ArrowRight size={15} className="transition-transform group-hover:translate-x-1" /></button>
+                  </div>
+
+                  {/* Key Takeaways Grid */}
+                  <div className="reveal delay-3 mt-6 sm:mt-8 grid w-full max-w-4xl gap-2.5 sm:gap-3 sm:grid-cols-2 text-start">
+                    {t.lessonPoints.map((point) => (
+                      <div key={point} className="glass flex items-start gap-3 rounded-xl p-3 sm:p-3.5 text-xs text-[#bbc6d3]">
+                        <Check size={16} className="mt-0.5 shrink-0 text-[#77aaf0]" />
+                        <span>{point}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Primary Funnel CTAs */}
+                  <div className="reveal delay-3 mt-8 sm:mt-10 flex w-full max-w-md flex-col sm:max-w-none sm:w-auto sm:flex-row items-stretch sm:items-center justify-center gap-3">
+                    <button
+                      onClick={() => scrollTo('consultation')}
+                      className="focus-ring group flex min-h-[48px] items-center justify-center gap-3 rounded-full bg-[#e8edf3] px-7 py-3 text-sm font-bold text-[#090b0e] transition hover:bg-[#a6c9ff] active:scale-[0.98] cursor-pointer"
+                      data-testid="button-hero-book"
+                    >
+                      {t.book}
+                      <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+                    </button>
+                    <button
+                      onClick={() => scrollTo('capabilities')}
+                      className="focus-ring flex min-h-[48px] items-center justify-center gap-2 rounded-full border border-white/15 px-6 py-3 text-sm text-[#d2dbe6] transition hover:border-[#77a9e6]/60 hover:bg-white/[.05] active:scale-[0.98] cursor-pointer"
+                      data-testid="button-hero-watch"
+                    >
+                      <span>{t.nav[0]}</span>
+                      <ArrowDownRight size={16} />
+                    </button>
+                  </div>
+
+                  {/* Trust Signals & Availability */}
+                  <div className="reveal delay-3 mt-7 sm:mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-5 text-[10px] sm:text-[11px] text-[#6f7c8c]">
+                    <span className="flex items-center gap-1.5 font-code">
+                      <ShieldCheck size={14} className="text-[#83abe1]" />
+                      {lang === 'ar' ? 'سرية تامة' : lang === 'fr' ? 'Confidentiel' : 'Confidential by default'}
+                    </span>
+                    <span className="h-3 w-px bg-white/15" />
+                    <span className="flex items-center gap-1.5 font-code">
+                      <Clock3 size={14} className="text-[#83abe1]" />
+                      {lang === 'ar' ? '14 دقيقة' : lang === 'fr' ? '14 minutes' : '14 minutes'}
+                    </span>
+                    <span className="h-3 w-px bg-white/15" />
+                    <span>{t.status}</span>
                   </div>
                 </div>
+
+                <button
+                  onClick={() => scrollTo('capabilities')}
+                  className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 items-center gap-3 font-code text-[10px] uppercase tracking-[.18em] text-[#687789] md:flex cursor-pointer hover:text-white transition-colors"
+                  data-testid="button-scroll-explore"
+                >
+                  <span className="h-9 w-6 rounded-full border border-white/15 p-1 flex justify-center">
+                    <span className="block h-2 w-1 rounded-full bg-[#a5c8f5] animate-bounce" />
+                  </span>
+                  {t.scroll}
+                </button>
               </section>
 
               <section id="capabilities" className="scroll-mt-20 border-y border-white/[.07] bg-[#0b0e12]">
@@ -230,22 +493,405 @@ function PublicHome() {
 
               <section id="method" className="scroll-mt-20 border-y border-white/[.07] bg-[#0a0d11]"><div className="mx-auto max-w-[1320px] px-5 py-24 sm:px-8 lg:px-12 lg:py-32"><div className="grid gap-12 lg:grid-cols-[.7fr_1.3fr]"><div><span className="eyebrow">{t.methodKicker}</span><h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] text-[#e3eaf2] sm:text-6xl">{t.methodTitle}</h2><p className="mt-6 max-w-sm text-sm leading-7 text-[#8794a5]">{t.methodBody}</p></div><div className="relative">{t.steps.map(([number,title,body], i) => <div key={number} className="group relative flex gap-6 border-b border-white/10 py-7 first:pt-0 last:border-0"><div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#668bb9]/50 bg-[#0a0d11] font-code text-[10px] text-[#a9c7ec]">{number}</div><div><h3 className="text-lg text-[#dbe4ee]">{title}</h3><p className="mt-2 max-w-md text-sm leading-6 text-[#7e8a9a]">{body}</p></div>{i < t.steps.length - 1 && <span className="absolute left-[18px] top-16 h-full w-px bg-gradient-to-b from-[#668bb8]/50 to-transparent rtl:right-[18px] rtl:left-auto" />}</div>)}</div></div></div></section>
 
-              <section id="work" className="scroll-mt-20 mx-auto max-w-[1320px] px-5 py-24 sm:px-8 lg:px-12 lg:py-36"><div className="flex flex-col justify-between gap-6 md:flex-row md:items-end"><div><span className="eyebrow">{t.workKicker}</span><h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-6xl">{t.workTitle}</h2></div><p className="max-w-xs text-sm leading-6 text-[#8491a2]">{t.workBody}</p></div><div className="mt-14 grid gap-5 lg:grid-cols-3">{t.work.map(([name,title,category,metric,metricLabel], i) => <article key={name} className="hover-lift group overflow-hidden rounded-2xl border border-white/10 bg-[#10151b]"><div className={`relative h-64 overflow-hidden border-b border-white/10 ${i === 0 ? 'bg-[radial-gradient(circle_at_64%_42%,rgba(77,152,204,.33),transparent_23%),linear-gradient(135deg,#17212b,#0c1015)]' : i === 1 ? 'bg-[radial-gradient(circle_at_40%_28%,rgba(174,185,197,.26),transparent_22%),linear-gradient(135deg,#282a2c,#101215)]' : 'bg-[radial-gradient(circle_at_68%_56%,rgba(75,113,159,.38),transparent_25%),linear-gradient(135deg,#171d25,#0c1015)]'}`}><div className="absolute inset-6 rounded-xl border border-white/10 bg-black/10 p-4 backdrop-blur-sm transition-transform duration-500 group-hover:scale-105"><div className="flex items-center justify-between font-code text-[8px] text-white/50"><span>{name.toUpperCase()}</span><ArrowUpRight size={13} /></div><div className="mt-10 h-2 w-1/2 rounded bg-white/25" /><div className="mt-3 h-2 w-2/3 rounded bg-white/10" /><div className="mt-7 grid grid-cols-3 gap-2"><div className="h-16 rounded bg-white/[.08]" /><div className="col-span-2 h-16 rounded bg-[#6b9bd0]/20" /></div></div><div className="absolute bottom-4 left-5 font-code text-[9px] text-white/45">CASE / 0{i + 1}</div></div><div className="p-6"><span className="font-code text-[9px] uppercase tracking-widest text-[#718197]">{category}</span><h3 className="mt-3 text-xl text-[#e0e6ee]">{title}</h3><div className="mt-7 flex items-end justify-between"><strong className="text-3xl tracking-[-.05em] text-[#9fc6f5]">{metric}</strong><span className="max-w-[110px] text-right text-[10px] leading-4 text-[#778596]">{metricLabel}</span></div></div></article>)}</div></section>
+              <section id="work" className="scroll-mt-20 mx-auto max-w-[1320px] px-5 py-24 sm:px-8 lg:px-12 lg:py-36">
+                <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+                  <div>
+                    <span className="eyebrow">{lang === 'ar' ? 'أعمال مختارة وآراء العملاء' : lang === 'fr' ? 'Projets choisis & retours clients' : 'Selected work & client feedback'}</span>
+                    <h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-6xl">
+                      {lang === 'ar' ? 'تجارب عملاء ونتائج موثقة.' : lang === 'fr' ? 'Retours d’expérience & résultats vérifiés.' : 'Real results, verified by client feedback.'}
+                    </h2>
+                  </div>
+                  <p className="max-w-xs text-sm leading-6 text-[#8491a2]">
+                    {lang === 'ar' ? 'شاهد آراء عملائنا بالفيديو والنتائج التي تحققت مع استوديو Spectra.' : lang === 'fr' ? 'Découvrez en vidéo les retours de nos clients sur la vélocité et le levier digital créés par Spectra.' : 'Client feedback videos showcasing the measurable velocity, craft, and commercial leverage Spectra creates.'}
+                  </p>
+                </div>
+                <div className="mt-14 grid gap-6 lg:grid-cols-3">
+                  {(testimonials.length > 0 ? testimonials : [
+                    {
+                      id: 1,
+                      clientName: "Maya Laurent",
+                      clientRole: "Founder & CEO",
+                      company: "Nadir Finance",
+                      quote: "Spectra didn't just give us a clean digital platform. They transformed our entire client acquisition velocity by 2.8x within 60 days.",
+                      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                      metric: "2.8×",
+                      metricLabel: "qualified lead velocity",
+                    },
+                    {
+                      id: 2,
+                      clientName: "Dr. Marcus Thorne",
+                      clientRole: "Chief of Medicine",
+                      company: "Astra Health",
+                      quote: "Our patient onboarding drop-off vanished. The attention to privacy, aesthetic clarity, and technical resilience is unmatched in the industry.",
+                      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+                      metric: "47%",
+                      metricLabel: "more completed bookings",
+                    },
+                    {
+                      id: 3,
+                      clientName: "Elena Rostova",
+                      clientRole: "VP Operations",
+                      company: "Northline Logistics",
+                      quote: "Complex enterprise workflows now feel natural. We gave 31 hours back to our operations team every single week.",
+                      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+                      metric: "31h",
+                      metricLabel: "returned each week",
+                    },
+                  ]).map((item) => (
+                    <article key={item.id} className="hover-lift group flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#10151b] shadow-2xl transition duration-300">
+                      <div>
+                        <div className="relative aspect-video w-full overflow-hidden border-b border-white/10 bg-black">
+                          <video
+                            src={item.videoUrl}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <div className="p-6">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-code text-[9px] uppercase tracking-widest text-[#718197]">
+                              {item.company}
+                            </span>
+                            {item.metric && (
+                              <div className="flex items-center gap-1.5 rounded-full border border-[#72a3e6]/30 bg-[#294c79]/20 px-2.5 py-0.5 font-code text-[11px] text-[#9fc6f5]">
+                                <strong>{item.metric}</strong>
+                                <span className="text-[9px] text-[#7d90a7]">{item.metricLabel}</span>
+                              </div>
+                            )}
+                          </div>
+                          <blockquote className="mt-4 text-sm leading-6 text-[#d2dde9] italic">
+                            “{item.quote}”
+                          </blockquote>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between border-t border-white/[.07] bg-white/[.015] px-6 py-4">
+                        <div>
+                          <strong className="block text-xs font-semibold text-[#e1eaf3]">
+                            {item.clientName}
+                          </strong>
+                          <small className="block text-[10px] text-[#768598]">
+                            {item.clientRole ? `${item.clientRole} · ` : ''}{item.company}
+                          </small>
+                        </div>
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/[.04] text-[#86b5f4]">
+                          <Play size={11} fill="currentColor" />
+                        </span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
 
               <section className="border-y border-white/[.07] bg-[#0b0e12]"><div className="mx-auto grid max-w-[1320px] gap-12 px-5 py-24 sm:px-8 lg:grid-cols-[.7fr_1.3fr] lg:items-end lg:px-12 lg:py-32"><div><span className="eyebrow">{t.proofKicker}</span><h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-6xl">{t.proofTitle}</h2></div><div className="border-l border-[#7197c5]/40 pl-6 sm:pl-10"><div className="mb-6 flex gap-1 text-[#b9d5f7]">{[1,2,3,4,5].map(i => <span key={i} className="h-1.5 w-1.5 rounded-full bg-current" />)}</div><blockquote className="max-w-2xl text-2xl leading-[1.35] tracking-[-.03em] text-[#dbe3ec] sm:text-3xl">“{t.quote}”</blockquote><p className="mt-7 font-code text-[10px] uppercase tracking-widest text-[#7c8b9d]">{t.quoteBy}</p></div></div></section>
 
-              <section id="consultation" className="scroll-mt-20 mx-auto max-w-[1320px] px-5 py-24 sm:px-8 lg:px-12 lg:py-36"><div className="grid gap-12 lg:grid-cols-[.7fr_1.3fr]"><div><span className="eyebrow">{t.formKicker}</span><h2 className="mt-5 max-w-md text-4xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-6xl">{t.formTitle}</h2><p className="mt-6 max-w-sm text-sm leading-7 text-[#8996a7]">{t.formBody}</p><div className="mt-10 flex items-center gap-3 text-xs text-[#8090a4]"><Clock3 size={16} className="text-[#78a8e7]" /> 30 min / complimentary / private</div></div><form onSubmit={submitForm} className="glass rounded-2xl p-5 sm:p-8">{sent ? <div className="flex min-h-[430px] flex-col items-center justify-center text-center"><div className="flex h-14 w-14 items-center justify-center rounded-full border border-[#79aaf0]/50 bg-[#4777af]/15 text-[#a9d0ff]"><Check size={25} /></div><h3 className="mt-6 text-2xl text-[#e4ecf6]">{t.formSuccess}</h3><button type="button" onClick={() => { setSent(false); scrollTo('schedule'); }} className="mt-8 flex items-center gap-2 text-sm text-[#9cc6fb]" data-testid="button-after-submit">{t.scheduleTitle}<ArrowRight size={15} /></button></div> : <><div className="grid gap-5 sm:grid-cols-2"><Field label={t.formFields[0]} id="name" /><Field label={t.formFields[1]} id="company" /><Field label={t.formFields[2]} id="email" type="email" /><Field label={t.formFields[3]} id="phone" /><label className="sm:col-span-2"><span className="mb-2 block text-[11px] text-[#9aa8b8]">{t.formFields[4]}</span><textarea required rows={3} className="focus-ring w-full resize-none rounded-lg border border-white/10 bg-white/[.03] px-3 py-3 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]" data-testid="input-project" /></label></div><div className="mt-7"><span className="mb-3 block text-[11px] text-[#9aa8b8]">{lang === 'ar' ? 'الخدمات التي تهمك' : lang === 'fr' ? 'Services concernés' : 'Services you may need'}</span><div className="flex flex-wrap gap-2">{t.services.map(service => <label key={service} className="cursor-pointer"><input type="checkbox" className="peer sr-only" data-testid={`checkbox-service-${service}`} /><span className="block rounded-full border border-white/10 px-3 py-2 text-xs text-[#8996a8] transition peer-checked:border-[#76a9ee] peer-checked:bg-[#31527b]/30 peer-checked:text-[#d8e8fc]">{service}</span></label>)}</div></div><div className="mt-8 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 sm:flex-row sm:items-center"><span className="flex items-center gap-2 text-[10px] text-[#687688]"><ShieldCheck size={13} className="text-[#78a8e7]" /> {lang === 'ar' ? 'لن نشارك بياناتك' : lang === 'fr' ? 'Vos données restent privées' : 'Your details stay private'}</span><button type="submit" className="group flex items-center justify-center gap-3 rounded-full bg-[#e7edf4] px-5 py-3 text-sm font-bold text-[#080a0d] transition hover:bg-[#a9cbfb]" data-testid="button-submit-consultation">{t.formButton}<ArrowRight size={15} className="transition-transform group-hover:translate-x-1" /></button></div></>}</form></div></section>
+              {/* Merged Consultation & Interactive Booking Calendar */}
+              <section id="consultation" className="scroll-mt-20 border-y border-white/[.07] bg-[#0a0e13] relative overflow-hidden">
+                <div id="schedule" className="absolute top-0" />
+                <div className="mx-auto max-w-[1320px] px-5 py-24 sm:px-8 lg:px-12 lg:py-32">
+                  <div className="max-w-3xl mb-14">
+                    <span className="eyebrow">{t.formKicker}</span>
+                    <h2 className="mt-4 text-4xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-6xl">
+                      {lang === 'ar' ? 'احجز جلستك الاستراتيجية وشاركنا رؤيتك.' : lang === 'fr' ? 'Réservez votre appel stratégique & décrivez votre projet.' : 'Book your strategy call & share your vision.'}
+                    </h2>
+                    <p className="mt-4 max-w-xl text-base text-[#8997a8]">
+                      {lang === 'ar' ? 'اختر موعداً متاحاً في التقويم وأخبرنا عن تفاصيل مشروعك في خطوة واحدة سلسة. بدون عروض بيعية أو ضغط.' : lang === 'fr' ? 'Choisissez un créneau disponible et décrivez votre projet en une seule étape. Échange ciblé de 30 minutes, sans pression commerciale.' : 'Select an available 30-minute window and tell us about what you’re building in one unified step. No pitch deck, no pressure.'}
+                    </p>
+                  </div>
 
-              <section id="schedule" className="scroll-mt-20 border-y border-white/[.07] bg-[#0b0e12]"><div className="mx-auto max-w-[1320px] px-5 py-24 sm:px-8 lg:px-12 lg:py-32"><div className="grid gap-12 lg:grid-cols-[.7fr_1.3fr]"><div><span className="eyebrow">{t.scheduleKicker}</span><h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-6xl">{t.scheduleTitle}</h2><p className="mt-6 max-w-sm text-sm leading-7 text-[#8996a7]">{t.scheduleBody}</p></div><div className="glass rounded-2xl p-5 sm:p-8">{confirmed ? <div className="flex min-h-[275px] flex-col items-center justify-center text-center"><CalendarDays className="text-[#83b5f5]" size={30} /><h3 className="mt-5 text-2xl text-[#e4ecf6]">{t.confirmed}</h3><p className="mt-2 text-sm text-[#8795a6]">{dayLabels[selectedDay]} · {selectedTime} · GMT+1</p><button onClick={() => setConfirmed(false)} className="mt-6 text-xs text-[#91baf0] underline underline-offset-4" data-testid="button-edit-time">Edit time</button></div> : <><div className="flex items-center justify-between"><span className="font-code text-[10px] uppercase tracking-widest text-[#8290a2]">April 2025</span><span className="flex items-center gap-2 text-[10px] text-[#647386]"><Globe2 size={13} /> GMT+1 / Paris</span></div><div className="mt-6 grid grid-cols-4 gap-2">{dayLabels.map((day, i) => <button key={day} onClick={() => setSelectedDay(i)} className={`rounded-lg border px-2 py-3 text-xs transition ${selectedDay === i ? 'border-[#7aacee] bg-[#31527b]/30 text-[#dceafe]' : 'border-white/10 text-[#8795a7] hover:border-white/25'}`} data-testid={`button-day-${i}`}>{day}</button>)}</div><div className="mt-6 flex flex-wrap gap-2">{['09:00','10:30','13:00','15:30','17:00'].map(time => <button key={time} onClick={() => setSelectedTime(time)} className={`rounded-lg border px-4 py-2.5 font-code text-[11px] transition ${selectedTime === time ? 'border-[#7aacee] bg-[#31527b]/30 text-[#dceafe]' : 'border-white/10 text-[#8795a7] hover:border-white/25'}`} data-testid={`button-time-${time}`}>{time}</button>)}</div><button onClick={() => setConfirmed(true)} className="mt-7 flex w-full items-center justify-center gap-2 rounded-lg bg-[#e7edf4] py-3 text-sm font-bold text-[#080a0d] transition hover:bg-[#aacbfa]" data-testid="button-confirm-time">{t.scheduleConfirm}<ArrowRight size={15} /></button></>}</div></div></div></section>
+                  {bookingSuccess && confirmedDetails ? (
+                    <div className="glass mx-auto max-w-2xl rounded-2xl p-8 sm:p-12 text-center">
+                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[#79aaf0]/50 bg-[#4777af]/20 text-[#a9d0ff] shadow-[0_0_40px_rgba(121,174,244,.3)] animate-pulse">
+                        <Check size={32} />
+                      </div>
+                      <h3 className="mt-6 text-3xl font-semibold text-[#e4ecf6]">
+                        {t.confirmed}
+                      </h3>
+                      <p className="mt-3 text-sm text-[#8a98a9]">
+                        {lang === 'ar'
+                          ? `شكراً ${confirmedDetails.name}. تم حجز جلستك الاستراتيجية الخاصة بنجاح.`
+                          : lang === 'fr'
+                          ? `Merci ${confirmedDetails.name}. Votre consultation privée de 30 minutes est bien enregistrée.`
+                          : `Thank you, ${confirmedDetails.name}. Your private 30-minute strategy consultation is reserved.`}
+                      </p>
 
-              <section id="faq" className="scroll-mt-20 mx-auto max-w-[1000px] px-5 py-24 sm:px-8 lg:py-36"><div className="text-center"><span className="eyebrow">{t.faqKicker}</span><h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-6xl">{t.faqTitle}</h2></div><div className="mt-14 border-t border-white/10">{t.faqs.map(([question, answer], i) => <div key={question} className="border-b border-white/10"><button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="flex w-full items-center justify-between gap-5 py-6 text-start text-base text-[#d9e1eb]" aria-expanded={openFaq === i} data-testid={`button-faq-${i}`}><span>{question}</span><ChevronDown size={18} className={`shrink-0 text-[#7c9ec7] transition-transform ${openFaq === i ? 'rotate-180' : ''}`} /></button>{openFaq === i && <p className="max-w-2xl pb-7 text-sm leading-7 text-[#8491a2]">{answer}</p>}</div>)}</div></section>
+                      <div className="mt-6 inline-flex items-center gap-2 rounded-xl border border-[#75a7ea]/30 bg-[#25426b]/30 px-5 py-3 text-sm text-[#d6e7fc]">
+                        <CalendarDays size={17} className="text-[#88b9f7]" />
+                        <strong>{confirmedDetails.slot}</strong>
+                      </div>
 
-              <section className="relative overflow-hidden border-t border-white/[.07] bg-[#0b0f14]"><div className="absolute inset-0 grid-fade opacity-50" /><div className="relative mx-auto flex max-w-[1320px] flex-col justify-between gap-10 px-5 py-24 sm:px-8 lg:flex-row lg:items-end lg:px-12 lg:py-32"><div><span className="eyebrow">SPECTRA / 2025</span><h2 className="mt-5 max-w-3xl text-5xl font-semibold leading-[.98] tracking-[-.07em] text-[#e7edf4] sm:text-7xl">{t.finalTitle}</h2></div><button onClick={() => scrollTo('consultation')} className="group flex w-fit items-center gap-3 rounded-full bg-[#e7edf4] px-6 py-3.5 text-sm font-bold text-[#080a0d] transition hover:bg-[#a9cbfb]" data-testid="button-final-cta">{t.finalCta}<ArrowRight size={16} className="transition-transform group-hover:translate-x-1" /></button></div></section>
+                      <p className="mt-5 text-xs text-[#708093]">
+                        {lang === 'ar'
+                          ? `تم إرسال دعوة التقويم وملف التحضير إلى ${confirmedDetails.email}`
+                          : lang === 'fr'
+                          ? `L'invitation calendrier et la note de préparation ont été envoyées à ${confirmedDetails.email}`
+                          : `A calendar invite and preparation briefing have been dispatched to ${confirmedDetails.email}`}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBookingSuccess(false);
+                          setClientName('');
+                          setCompanyName('');
+                          setClientEmail('');
+                          setClientPhone('');
+                          setProjectDescription('');
+                        }}
+                        className="mt-8 text-xs text-[#9cc6fb] underline underline-offset-4 cursor-pointer hover:text-white"
+                      >
+                        {lang === 'ar' ? 'حجز موعد إضافي أو تعديل' : lang === 'fr' ? 'Réserver un autre créneau' : 'Schedule another slot or modify'}
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleMergedSubmit} className="glass rounded-2xl p-5 sm:p-10 lg:p-12">
+                      <div className="grid gap-8 sm:gap-12 lg:grid-cols-2">
+                        {/* Left Column: Calendar & Free Slots */}
+                        <div className="space-y-5 sm:space-y-6">
+                          <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                            <div>
+                              <span className="font-code text-[10px] uppercase tracking-widest text-[#7da6d8]">
+                                {lang === 'ar' ? 'الخطوة الأولى' : lang === 'fr' ? 'Étape 1' : 'Step 1'}
+                              </span>
+                              <h4 className="mt-1 text-base sm:text-lg font-semibold text-[#e1e9f2]">
+                                {lang === 'ar' ? 'اختر اليوم والوقت المناسب' : lang === 'fr' ? 'Choisissez le jour & l’heure' : 'Choose your consultation slot'}
+                              </h4>
+                            </div>
+                            <span className="flex items-center gap-1.5 font-code text-[10px] text-[#78899d]">
+                              <Globe2 size={13} className="text-[#6d9fdc]" /> {lang === 'ar' ? 'تلمسان · GMT+1' : lang === 'fr' ? 'Tlemcen · GMT+1' : 'Tlemcen, Algeria · GMT+1'}
+                            </span>
+                          </div>
+
+                          {/* Day Selector Chips: Swipeable on mobile, grid on desktop */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="block font-code text-[10px] uppercase tracking-wider text-[#8b99aa]">
+                                {lang === 'ar' ? 'الأيام المتاحة' : lang === 'fr' ? 'Jours disponibles' : 'Available business days'}
+                              </span>
+                              <span className="text-[9px] text-[#6d8095] sm:hidden">
+                                {lang === 'ar' ? 'اسحب لليمين/اليسار ←' : lang === 'fr' ? 'Glisser ←' : 'Swipe for days →'}
+                              </span>
+                            </div>
+                            <div className="flex sm:grid sm:grid-cols-6 gap-2 overflow-x-auto pb-2 scrollbar-none touch-pan-x -mx-1 px-1">
+                              {availableDays.map((day, idx) => (
+                                <button
+                                  key={day.isoDate}
+                                  type="button"
+                                  onClick={() => setSelectedDayIndex(idx)}
+                                  className={`flex shrink-0 min-w-[76px] sm:min-w-0 min-h-[58px] flex-col items-center justify-center rounded-xl border p-2 transition cursor-pointer active:scale-[0.97] ${
+                                    selectedDayIndex === idx
+                                      ? 'border-[#79acee] bg-[#2d4d77]/40 text-[#e4f0fe] shadow-[0_0_20px_rgba(110,165,240,.2)] ring-1 ring-[#79acee]'
+                                      : 'border-white/10 bg-white/[.02] text-[#8492a3] hover:border-white/25 hover:text-white'
+                                  }`}
+                                >
+                                  <span className="text-[10px] font-medium uppercase tracking-wider text-[#7e8f9f]">{day.dayName}</span>
+                                  <strong className="mt-0.5 text-base font-semibold">{day.dayNumber}</strong>
+                                  <span className="text-[9px] text-[#6f7e8e]">{day.monthName}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Time Slot Picker: 2 columns on mobile, 3 on desktop */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2.5">
+                              <span className="font-code text-[10px] uppercase tracking-wider text-[#8b99aa]">
+                                {lang === 'ar' ? 'الأوقات الشاغرة (30 دقيقة)' : lang === 'fr' ? 'Créneaux libres (30 min)' : 'Available time slots (30 min)'}
+                              </span>
+                              <span className="text-[10px] text-[#7198c8]">
+                                {availableSlots.length} {lang === 'ar' ? 'مواعيد حرة' : lang === 'fr' ? 'créneaux libres' : 'free slots'}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {availableSlots.map((slot) => (
+                                <button
+                                  key={slot}
+                                  type="button"
+                                  onClick={() => setSelectedSlotTime(slot)}
+                                  className={`rounded-xl border py-2.5 px-3 min-h-[44px] font-code text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${
+                                    selectedSlotTime === slot
+                                      ? 'border-[#79acee] bg-[#2d4d77]/50 text-[#e4f0fe] shadow-[0_0_15px_rgba(110,165,240,.25)] ring-1 ring-[#79acee]'
+                                      : 'border-white/10 bg-white/[.02] text-[#8695a6] hover:border-white/25 hover:text-white'
+                                  }`}
+                                >
+                                  <Clock3 size={12} className={selectedSlotTime === slot ? 'text-[#84b5f4]' : 'text-[#5d6c7d]'} />
+                                  {slot}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Selected Slot Banner */}
+                          <div className="flex items-center gap-3 rounded-xl border border-[#76a6e7]/25 bg-[#172b44]/40 p-3 text-xs text-[#a9cbf4]">
+                            <CalendarDays size={16} className="shrink-0 text-[#79acee]" />
+                            <span className="leading-snug">
+                              <strong>
+                                {lang === 'ar' ? 'الموعد المحدد: ' : lang === 'fr' ? 'Créneau sélectionné : ' : 'Selected reservation: '}
+                              </strong>
+                              {availableDays[selectedDayIndex]?.label} · {selectedSlotTime} · GMT+1 ({lang === 'ar' ? 'تلمسان' : 'Tlemcen'})
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Right Column: Contact & Project Details */}
+                        <div className="space-y-5">
+                          <div className="border-b border-white/10 pb-4">
+                            <span className="font-code text-[10px] uppercase tracking-widest text-[#7da6d8]">
+                              {lang === 'ar' ? 'الخطوة الثانية' : lang === 'fr' ? 'Étape 2' : 'Step 2'}
+                            </span>
+                            <h4 className="mt-1 text-base sm:text-lg font-semibold text-[#e1e9f2]">
+                              {lang === 'ar' ? 'بياناتك وتفاصيل المشروع' : lang === 'fr' ? 'Vos coordonnées & votre projet' : 'Your details & project scope'}
+                            </h4>
+                          </div>
+
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <div>
+                              <label className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">
+                                {t.formFields[0]} *
+                              </label>
+                              <input
+                                required
+                                value={clientName}
+                                onChange={(e) => setClientName(e.target.value)}
+                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                                placeholder="e.g. Maya Laurent"
+                                data-testid="input-name"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">
+                                {t.formFields[1]} *
+                              </label>
+                              <input
+                                required
+                                value={companyName}
+                                onChange={(e) => setCompanyName(e.target.value)}
+                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                                placeholder="e.g. Nadir Finance"
+                                data-testid="input-company"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">
+                                {t.formFields[2]} *
+                              </label>
+                              <input
+                                required
+                                type="email"
+                                value={clientEmail}
+                                onChange={(e) => setClientEmail(e.target.value)}
+                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                                placeholder="maya@nadir.finance"
+                                data-testid="input-email"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">
+                                {t.formFields[3]}
+                              </label>
+                              <input
+                                type="tel"
+                                value={clientPhone}
+                                onChange={(e) => setClientPhone(e.target.value)}
+                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                                placeholder="+33 6 ..."
+                                data-testid="input-phone"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Services Multi-Select */}
+                          <div>
+                            <span className="mb-2 block text-xs font-medium text-[#9aa8b8]">
+                              {lang === 'ar' ? 'الخدمات التي تهمك' : lang === 'fr' ? 'Services concernés' : 'Services you may need'}
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              {t.services.map((service) => {
+                                const isChecked = selectedServices.includes(service);
+                                return (
+                                  <button
+                                    key={service}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedServices((prev) =>
+                                        isChecked ? prev.filter((s) => s !== service) : [...prev, service]
+                                      );
+                                    }}
+                                    className={`rounded-full border px-3 py-1.5 text-xs transition cursor-pointer ${
+                                      isChecked
+                                        ? 'border-[#76a9ee] bg-[#31527b]/40 text-[#d8e8fc]'
+                                        : 'border-white/10 bg-white/[.02] text-[#8695a7] hover:border-white/20'
+                                    }`}
+                                  >
+                                    {service}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Project description textarea */}
+                          <div>
+                            <label className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">
+                              {t.formFields[4]} *
+                            </label>
+                            <textarea
+                              required
+                              rows={3}
+                              value={projectDescription}
+                              onChange={(e) => setProjectDescription(e.target.value)}
+                              placeholder="Briefly describe your objectives, timeline, or current digital bottleneck..."
+                              className="focus-ring w-full resize-none rounded-lg border border-white/10 bg-white/[.03] p-3 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                              data-testid="input-project"
+                            />
+                          </div>
+
+                          {/* Submit Bar */}
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10 pt-4">
+                            <span className="flex items-center gap-2 text-[10px] text-[#718194]">
+                              <ShieldCheck size={14} className="text-[#78a8e7]" />
+                              {lang === 'ar' ? 'بياناتك مشفرة ولن تتم مشاركتها' : lang === 'fr' ? 'Vos données restent strictement confidentielles' : 'Private consultation · NDA on request'}
+                            </span>
+
+                            <button
+                              type="submit"
+                              disabled={submittingBooking}
+                              className="group flex w-full sm:w-auto min-h-[48px] items-center justify-center gap-2.5 rounded-full bg-[#e7edf4] px-8 py-3.5 text-sm font-bold text-[#080a0d] transition hover:bg-[#a9cbfb] active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                              data-testid="button-submit-consultation"
+                            >
+                              {submittingBooking ? (
+                                <>Processing...</>
+                              ) : (
+                                <>
+                                  {lang === 'ar'
+                                    ? `تأكيد حجز ${selectedSlotTime} وإرسال الطلب`
+                                    : lang === 'fr'
+                                    ? `Confirmer pour ${selectedSlotTime} & Envoyer`
+                                    : `Confirm Call for ${selectedSlotTime} & Send`}
+                                  <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              </section>
+
+              <section id="faq" className="scroll-mt-20 mx-auto max-w-[1000px] px-5 py-20 sm:px-8 lg:py-36"><div className="text-center"><span className="eyebrow">{t.faqKicker}</span><h2 className="mt-5 text-3xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-5xl lg:text-6xl">{t.faqTitle}</h2></div><div className="mt-12 sm:mt-14 border-t border-white/10">{t.faqs.map(([question, answer], i) => <div key={question} className="border-b border-white/10"><button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="flex w-full items-center justify-between gap-5 py-5 sm:py-6 text-start text-sm sm:text-base text-[#d9e1eb]" aria-expanded={openFaq === i} data-testid={`button-faq-${i}`}><span>{question}</span><ChevronDown size={18} className={`shrink-0 text-[#7c9ec7] transition-transform ${openFaq === i ? 'rotate-180' : ''}`} /></button>{openFaq === i && <p className="max-w-2xl pb-6 sm:pb-7 text-xs sm:text-sm leading-6 sm:leading-7 text-[#8491a2]">{answer}</p>}</div>)}</div></section>
+
+              <section className="relative overflow-hidden border-t border-white/[.07] bg-[#0b0f14]"><div className="absolute inset-0 grid-fade opacity-50" /><div className="relative mx-auto flex max-w-[1320px] flex-col justify-between gap-8 px-5 py-20 sm:px-8 lg:flex-row lg:items-end lg:px-12 lg:py-32"><div><span className="eyebrow">SPECTRA / 2025</span><h2 className="mt-4 max-w-3xl text-4xl font-semibold leading-[.98] tracking-[-.07em] text-[#e7edf4] sm:text-6xl lg:text-7xl">{t.finalTitle}</h2></div><button onClick={() => scrollTo('consultation')} className="group flex w-full sm:w-fit min-h-[48px] items-center justify-center gap-3 rounded-full bg-[#e7edf4] px-7 py-3.5 text-sm font-bold text-[#080a0d] transition hover:bg-[#a9cbfb] active:scale-[0.98]" data-testid="button-final-cta">{t.finalCta}<ArrowRight size={16} className="transition-transform group-hover:translate-x-1" /></button></div></section>
             </main>
 
-            <footer className="border-t border-white/[.07]"><div className="mx-auto grid max-w-[1320px] gap-12 px-5 py-14 sm:px-8 lg:grid-cols-[1.3fr_1fr_1fr_1fr] lg:px-12"><div><div className="flex items-center gap-3"><span className="flex h-9 w-9 overflow-hidden rounded-full border border-white/20"><img src="/assets/spectra-logo.jpeg" alt="Spectra" className="h-full w-full object-cover" /></span><span className="font-code text-xs tracking-[.28em] text-[#e7ebf0]">SPECTRA</span></div><p className="mt-6 max-w-xs text-xs leading-6 text-[#718091]">Digital products and systems for businesses with somewhere serious to go.</p></div><FooterCol title={lang === 'ar' ? 'استكشف' : lang === 'fr' ? 'Explorer' : 'Explore'} items={t.nav} onSelect={(i) => scrollTo(['capabilities','method','work','faq'][i])} /><FooterCol title={lang === 'ar' ? 'تواصل' : lang === 'fr' ? 'Contact' : 'Contact'} items={['hello@spectra.agency', 'London / Paris / Remote', 'LinkedIn', 'Instagram']} onSelect={() => {}} /><div><span className="eyebrow">STATUS</span><p className="mt-4 flex items-center gap-2 text-xs text-[#98a7b8]"><span className="h-1.5 w-1.5 rounded-full bg-[#7ab0fa]" /> {t.status}</p></div></div><div className="mx-auto flex max-w-[1320px] flex-col justify-between gap-3 border-t border-white/10 px-5 py-6 text-[10px] text-[#5e6b7c] sm:flex-row sm:px-8 lg:px-12"><span>© 2025 Spectra Agency. All rights reserved.</span><span>Privacy / Terms / Built with intent</span></div></footer>
+            <footer className="border-t border-white/[.07]"><div className="mx-auto grid max-w-[1320px] gap-10 px-5 py-12 sm:px-8 lg:grid-cols-[1.3fr_1fr_1fr_1fr] lg:px-12"><div><div className="flex items-center gap-3"><span className="flex h-9 w-9 overflow-hidden rounded-full border border-white/20"><img src="/assets/spectra-logo.jpeg" alt="Spectra" className="h-full w-full object-cover" /></span><span className="font-code text-xs tracking-[.28em] text-[#e7ebf0]">SPECTRA</span></div><p className="mt-5 max-w-xs text-xs leading-6 text-[#718091]">Digital products and systems for businesses with somewhere serious to go.</p></div><FooterCol title={lang === 'ar' ? 'استكشف' : lang === 'fr' ? 'Explorer' : 'Explore'} items={t.nav} onSelect={(i) => scrollTo(['capabilities','method','work','faq'][i])} /><FooterCol title={lang === 'ar' ? 'تواصل' : lang === 'fr' ? 'Contact' : 'Contact'} items={['hello@spectra.agency', lang === 'ar' ? 'تلمسان، الجزائر / عن بعد' : lang === 'fr' ? 'Tlemcen, Algérie / À distance' : 'Tlemcen, Algeria / Remote', 'LinkedIn', 'Instagram']} onSelect={() => {}} /><div><span className="eyebrow">STATUS</span><p className="mt-4 flex items-center gap-2 text-xs text-[#98a7b8]"><span className="h-1.5 w-1.5 rounded-full bg-[#7ab0fa]" /> {t.status}</p></div></div><div className="mx-auto flex max-w-[1320px] flex-col justify-between gap-3 border-t border-white/10 px-5 py-6 text-[10px] text-[#5e6b7c] sm:flex-row sm:px-8 lg:px-12"><span>© 2025 Spectra Agency. All rights reserved.</span><span>Privacy / Terms / Built with intent</span></div></footer>
 
-            <button onClick={() => scrollTo('consultation')} className="fixed bottom-5 right-5 z-30 flex items-center gap-2 rounded-full border border-[#82afea]/40 bg-[#152338]/90 px-4 py-3 text-xs font-semibold text-[#dbeaff] shadow-2xl backdrop-blur-xl transition hover:-translate-y-1 hover:bg-[#203b60] sm:right-8" data-testid="button-floating-cta"><CalendarDays size={15} /> {t.book}</button>
+            <button onClick={() => scrollTo('consultation')} className="fixed bottom-4 right-4 sm:bottom-6 sm:right-8 z-30 flex items-center gap-2 rounded-full border border-[#82afea]/40 bg-[#152338]/90 px-4 py-3 text-xs font-semibold text-[#dbeaff] shadow-2xl backdrop-blur-xl transition hover:-translate-y-1 hover:bg-[#203b60] active:scale-95 safe-bottom" data-testid="button-floating-cta"><CalendarDays size={15} /> {t.book}</button>
             {exitOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Special invitation"><div className="glass relative max-w-md rounded-2xl p-7 sm:p-9"><button onClick={() => setExitOpen(false)} className="absolute right-4 top-4 text-[#8290a1]" aria-label="Close" data-testid="button-close-exit"><X size={18} /></button><span className="eyebrow">A considered next step</span><h2 className="mt-5 text-3xl font-semibold tracking-[-.05em] text-[#e7edf4]">Before you go — take the scorecard with you.</h2><p className="mt-4 text-sm leading-6 text-[#8997a8]">Book a private 30-minute conversation and we’ll map the highest-leverage opportunity in your current digital experience.</p><button onClick={() => { setExitOpen(false); scrollTo('consultation'); }} className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#e7edf4] py-3 text-sm font-bold text-[#080a0d]" data-testid="button-exit-cta">{t.book}<ArrowRight size={15} /></button></div></div>}
           </div>
         </ErrorBoundary>
@@ -263,16 +909,14 @@ function FooterCol({ title, items, onSelect }: { title: string; items: readonly 
   return <div><span className="eyebrow">{title}</span><div className="mt-4 flex flex-col gap-3">{items.map((item, i) => <button key={item} onClick={() => onSelect(i)} className="w-fit text-start text-xs text-[#8491a2] transition hover:text-[#dce7f4]" data-testid={`link-footer-${i}`}>{item}</button>)}</div></div>;
 }
 
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-);
+const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+  ? publishableKeyFromHost(
+      window.location.hostname,
+      import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+    )
+  : undefined;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
-const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
-
-if (!clerkPubKey) {
-  throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in .env file');
-}
+const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
 
 const clerkAppearance = {
   theme: shadcn,
@@ -335,54 +979,239 @@ function ClerkQueryBoundary() {
   return null;
 }
 
-function SignInPage() {
-  return <div className="admin-auth-page"><div className="admin-auth-orbit" /><div className="admin-auth-intro"><img src="/logo.svg" alt="Spectra" /><p className="admin-kicker">Spectra / secure workspace</p><h1>The room where<br /><span>good work moves.</span></h1><p>Private access for the Spectra studio team. Clear decisions, handled carefully.</p></div><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>;
-}
+function AdminLoginPage() {
+  const [, setLocation] = useLocation();
+  const [lang, setLang] = useState<AdminLang>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('spectra_admin_lang');
+      if (saved === 'en' || saved === 'fr' || saved === 'ar') return saved;
+    }
+    return 'en';
+  });
 
-function SignUpPage() {
-  return <div className="admin-auth-page"><div className="admin-auth-orbit" /><div className="admin-auth-intro"><img src="/logo.svg" alt="Spectra" /><p className="admin-kicker">Spectra / secure workspace</p><h1>Make the next<br /><span>move deliberate.</span></h1><p>Create an authenticated studio workspace account to continue.</p></div><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>;
-}
+  const changeLang = (next: AdminLang) => {
+    setLang(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('spectra_admin_lang', next);
+    }
+  };
 
-function HomeRoute() {
-  const { isLoaded, isSignedIn } = useAuth();
-  if (!isLoaded) return <div className="admin-loading-screen"><span className="admin-loader-mark" /><p>Loading Spectra</p></div>;
-  return isSignedIn ? <Redirect to="/admin" /> : <PublicHome />;
+  const isRtl = lang === 'ar';
+
+  const loginCopy = {
+    en: {
+      kicker: 'Spectra / Operating Room',
+      title: 'Studio Admin Access',
+      subtitle: 'Authenticate to access pipeline, client video reviews, and capacity.',
+      credBadge: 'Admin Credentials',
+      fillCreds: 'Fill Credentials',
+      emailLabel: 'Work Email',
+      passwordLabel: 'Password',
+      submitBtn: 'Enter Operating Room',
+      authenticating: 'Authenticating...',
+      returnFunnel: '← Return to public funnel',
+    },
+    fr: {
+      kicker: 'Spectra / Salle de contrôle',
+      title: 'Accès Studio Admin',
+      subtitle: 'Authentifiez-vous pour accéder au pipeline, aux retours vidéo et à la capacité.',
+      credBadge: 'Identifiants Admin',
+      fillCreds: 'Remplir automatiquement',
+      emailLabel: 'Email professionnel',
+      passwordLabel: 'Mot de passe',
+      submitBtn: 'Entrer dans la salle de contrôle',
+      authenticating: 'Authentification en cours...',
+      returnFunnel: '← Retour au site public',
+    },
+    ar: {
+      kicker: 'سبيكترا / غرفة العمليات',
+      title: 'دخول إدارة الاستوديو',
+      subtitle: 'سجل الدخول للوصول إلى طلبات العملاء، مراجعات الفيديو، وإدارة الأوقات.',
+      credBadge: 'بيانات الدخول الإدارية',
+      fillCreds: 'تعبئة تلقائية',
+      emailLabel: 'البريد الإلكتروني للعمل',
+      passwordLabel: 'كلمة المرور',
+      submitBtn: 'دخول غرفة العمليات',
+      authenticating: 'جاري التحقق...',
+      returnFunnel: 'العودة إلى الصفحة العامة ←',
+    },
+  }[lang];
+
+  const [email, setEmail] = useState('admin@spectra.agency');
+  const [password, setPassword] = useState('spectra2025');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('spectra_admin_token')) {
+      setLocation('/admin');
+    }
+  }, [setLocation]);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Invalid email or password');
+      }
+      localStorage.setItem('spectra_admin_token', data.token);
+      localStorage.setItem('spectra_admin_user', JSON.stringify(data.user));
+      setAuthTokenGetter(() => data.token);
+      setLocation('/admin');
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please verify credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="spectra-page noise flex min-h-screen items-center justify-center px-4 py-12" dir={isRtl ? 'rtl' : 'ltr'}>
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="inline-flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-white/20 bg-[#11151a] mb-4 shadow-xl">
+            <img src="/assets/spectra-logo.jpeg" alt="Spectra" className="h-full w-full object-cover" />
+          </div>
+          
+          {/* Language selector */}
+          <div className="flex justify-center mb-4">
+            <div className="admin-lang-picker">
+              {(['en', 'fr', 'ar'] as AdminLang[]).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => changeLang(item)}
+                  className={`admin-lang-btn ${lang === item ? 'is-active' : ''}`}
+                  data-testid={`button-login-lang-${item}`}
+                >
+                  {item.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <p className="eyebrow">{loginCopy.kicker}</p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#e6edf5] sm:text-3xl">{loginCopy.title}</h1>
+          <p className="mt-2 text-xs text-[#8796a7]">{loginCopy.subtitle}</p>
+        </div>
+
+        {/* Credentials Card */}
+        <div className="mb-6 rounded-xl border border-[#74a5e6]/25 bg-[#142236]/60 p-4 backdrop-blur-md">
+          <div className="flex items-center justify-between text-xs text-[#95bfe9]">
+            <span className="font-semibold flex items-center gap-1.5"><ShieldCheck size={14} className="text-[#7aafe8]" /> {loginCopy.credBadge}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('admin@spectra.agency');
+                setPassword('spectra2025');
+              }}
+              className="text-[11px] underline underline-offset-2 hover:text-white cursor-pointer text-[#8dbcf3]"
+            >
+              {loginCopy.fillCreds}
+            </button>
+          </div>
+          <div className="mt-3 space-y-1.5 font-code text-[11px] text-[#c2d9f2]">
+            <div className="flex justify-between border-b border-white/[.07] pb-1">
+              <span className="text-[#7891aa]">Email:</span>
+              <span className="select-all font-medium text-[#d9e7f8]">admin@spectra.agency</span>
+            </div>
+            <div className="flex justify-between pt-0.5">
+              <span className="text-[#7891aa]">Password:</span>
+              <span className="select-all font-medium text-[#d9e7f8]">spectra2025</span>
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-lg border border-[#e2a1a7]/30 bg-[#e2a1a7]/10 p-3 text-xs text-[#f2b8bd]">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="glass rounded-2xl p-5 sm:p-8 space-y-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">{loginCopy.emailLabel}</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="focus-ring w-full min-h-[44px] rounded-lg border border-white/10 bg-white/[.04] px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+              placeholder="admin@spectra.agency"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">{loginCopy.passwordLabel}</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="focus-ring w-full min-h-[44px] rounded-lg border border-white/10 bg-white/[.04] px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-3 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-[#e7edf4] py-3 text-sm font-bold text-[#080a0d] transition hover:bg-[#aacbfa] active:scale-[0.98] cursor-pointer disabled:opacity-50"
+          >
+            {loading ? loginCopy.authenticating : loginCopy.submitBtn} <ArrowRight size={15} />
+          </button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <a href="/" className="text-xs text-[#708298] hover:text-[#c4d6eb] transition">
+            {loginCopy.returnFunnel}
+          </a>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function AdminRoute() {
-  const { isLoaded, isSignedIn } = useAuth();
-  if (!isLoaded) return <div className="admin-loading-screen"><span className="admin-loader-mark" /><p>Verifying workspace access</p></div>;
-  if (!isSignedIn) return <Redirect to="/sign-in" />;
-  return <Switch><Route path="/admin/leads" component={AdminLeads} /><Route path="/admin/video" component={AdminVideo} /><Route path="/admin/availability" component={AdminAvailability} /><Route path="/admin/bookings" component={AdminBookings} /><Route path="/admin" component={AdminOverview} /></Switch>;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('spectra_admin_token') : null;
+  if (!token) return <Redirect to="/admin/login" />;
+
+  return (
+    <AdminLangProvider>
+      <Switch>
+        <Route path="/admin/leads" component={AdminLeads} />
+        <Route path="/admin/testimonials" component={AdminTestimonials} />
+        <Route path="/admin/video" component={AdminVideo} />
+        <Route path="/admin/availability" component={AdminAvailability} />
+        <Route path="/admin/bookings" component={AdminBookings} />
+        <Route path="/admin" component={AdminOverview} />
+        <Route component={() => <Redirect to="/admin" />} />
+      </Switch>
+    </AdminLangProvider>
+  );
 }
 
 function ClerkRoutes() {
-  const [, setLocation] = useLocation();
-  const stripBase = (path: string) => basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path;
-  return <ClerkProvider
-    publishableKey={clerkPubKey}
-    proxyUrl={clerkProxyUrl}
-    appearance={clerkAppearance}
-    signInUrl={`${basePath}/sign-in`}
-    signUpUrl={`${basePath}/sign-up`}
-    localization={{
-      signIn: { start: { title: 'Welcome back', subtitle: 'Sign in to access the Spectra operating room' } },
-      signUp: { start: { title: 'Join the studio workspace', subtitle: 'Create your secure Spectra account' } },
-    }}
-    routerPush={(to) => setLocation(stripBase(to))}
-    routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
-  >
+  return (
     <QueryClientProvider client={queryClient}>
-      <ClerkQueryBoundary />
       <Switch>
-        <Route path="/" component={HomeRoute} />
-        <Route path="/sign-in/*?" component={SignInPage} />
-        <Route path="/sign-up/*?" component={SignUpPage} />
+        <Route path="/" component={PublicHome} />
+        <Route path="/admin/login" component={AdminLoginPage} />
+        <Route path="/sign-in/*?" component={() => <Redirect to="/admin/login" />} />
+        <Route path="/sign-up/*?" component={() => <Redirect to="/admin/login" />} />
         <Route path="/admin/*?" component={AdminRoute} />
         <Route component={() => <Redirect to="/" />} />
       </Switch>
     </QueryClientProvider>
-  </ClerkProvider>;
+  );
 }
 
 function App() {

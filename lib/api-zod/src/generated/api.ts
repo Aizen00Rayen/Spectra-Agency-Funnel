@@ -71,8 +71,8 @@ export const CreateLeadResponse = zod.object({
  * @summary Get available consultation slots
  */
 export const GetPublicAvailabilityQueryParams = zod.object({
-  "from": zod.date(),
-  "to": zod.date()
+  "from": zod.coerce.date(),
+  "to": zod.coerce.date()
 })
 
 export const GetPublicAvailabilityResponseItem = zod.object({

@@ -35,12 +35,20 @@ import {
 import {
   availabilityRulesTable,
   bookingsTable,
+  clientTestimonialsTable,
   db,
   leadsTable,
   videoAssetsTable,
 } from "@workspace/db";
-import { createConsultationEvent, listGoogleCalendars } from "../lib/calendar";
-import { requireAdmin, type AdminRequest } from "../middlewares/adminAuth";
+
+import {
+  createAdminSession,
+  requireAdmin,
+  revokeAdminSession,
+  validateAdminCredentials,
+  type AdminRequest,
+} from "../middlewares/adminAuth";
+import { generateStreamTicket } from "./storage";
 
 const router: IRouter = Router();
 
@@ -87,7 +95,8 @@ function serializeRule(rule: typeof availabilityRulesTable.$inferSelect) {
   return rule;
 }
 
-function parseDateOnly(value: string) {
+function parseDateOnly(value: Date | string) {
+  if (value instanceof Date) return value;
   const date = new Date(`${value}T00:00:00.000Z`);
   if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
   return date;
@@ -97,7 +106,7 @@ function addMinutes(date: Date, minutes: number) {
   return new Date(date.getTime() + minutes * 60_000);
 }
 
-async function buildAvailability(from: string, to: string) {
+async function buildAvailability(from: Date | string, to: Date | string) {
   const rules = await db
     .select()
     .from(availabilityRulesTable)
@@ -135,7 +144,7 @@ async function buildAvailability(from: string, to: string) {
   return slots;
 }
 
-router.get("/public/config", async (_req, res) => {
+router.get("/public/config", async (req, res) => {
   const videos = await db
     .select()
     .from(videoAssetsTable)
@@ -144,11 +153,23 @@ router.get("/public/config", async (_req, res) => {
     .limit(1);
   const rules = await db.select().from(availabilityRulesTable).where(eq(availabilityRulesTable.enabled, true)).limit(1);
   const video = videos[0];
+
+  const rawHost = req.headers["x-forwarded-host"] || req.headers.host || "localhost:5000";
+  const host = Array.isArray(rawHost) ? rawHost[0] : String(rawHost);
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+
+  let videoUrl: string | null = null;
+  if (video) {
+    const filename = video.objectPath.replace(/^\/objects\//, "");
+    const ticket = generateStreamTicket(filename);
+    videoUrl = `${protocol}://${host}/api/storage/objects/${filename}?ticket=${ticket}`;
+  }
+
   const payload = {
     video: video
       ? {
           title: video.title,
-          url: `/api/storage/objects/${video.objectPath.replace(/^\/objects\//, "")}`,
+          url: videoUrl!,
         }
       : null,
     bookingDurationMinutes: 30,
@@ -221,18 +242,122 @@ router.post("/bookings", async (req, res) => {
   res.status(201).json(CreateBookingResponse.parse(serializeBooking(booking)));
 });
 
+router.get("/public/testimonials", async (_req, res) => {
+  const testimonials = await db
+    .select()
+    .from(clientTestimonialsTable)
+    .where(eq(clientTestimonialsTable.isPublished, true))
+    .orderBy(desc(clientTestimonialsTable.createdAt));
+  res.json(testimonials);
+});
+
+router.post("/admin/login", async (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || !password) {
+    res.status(400).json({ error: "Email and password are required" });
+    return;
+  }
+  const result = validateAdminCredentials(email, password);
+  if (!result.valid) {
+    res.status(401).json({ error: "Invalid email or password" });
+    return;
+  }
+  const token = createAdminSession(result.email!);
+  res.cookie("spectra_admin_token", token, {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  res.json({
+    success: true,
+    token,
+    user: { email: result.email, role: "owner" },
+  });
+});
+
+router.post("/admin/logout", async (req, res) => {
+  const token = req.cookies?.["spectra_admin_token"] || (req.headers["x-admin-token"] as string);
+  revokeAdminSession(token);
+  res.clearCookie("spectra_admin_token", { path: "/" });
+  res.json({ success: true });
+});
+
+
+
 router.use("/admin", requireAdmin);
+
+router.get("/admin/me", async (_req, res) => {
+  res.json({ authenticated: true, user: { email: "admin@spectra.agency", role: "owner" } });
+});
+
+router.get("/admin/testimonials", async (_req, res) => {
+  const testimonials = await db
+    .select()
+    .from(clientTestimonialsTable)
+    .orderBy(desc(clientTestimonialsTable.createdAt));
+  res.json(testimonials);
+});
+
+router.post("/admin/testimonials", async (req, res) => {
+  const { clientName, clientRole, company, quote, videoUrl, thumbnailUrl, metric, metricLabel } = req.body || {};
+  if (!clientName || !company || !quote || !videoUrl) {
+    res.status(400).json({ error: "clientName, company, quote, and videoUrl are required" });
+    return;
+  }
+  const [created] = await db
+    .insert(clientTestimonialsTable)
+    .values({
+      clientName,
+      clientRole: clientRole || "Client",
+      company,
+      quote,
+      videoUrl,
+      thumbnailUrl: thumbnailUrl || null,
+      metric: metric || null,
+      metricLabel: metricLabel || null,
+      isPublished: true,
+    })
+    .returning();
+  res.status(201).json(created);
+});
+
+router.patch("/admin/testimonials/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const { isPublished, clientName, clientRole, company, quote, videoUrl, metric, metricLabel } = req.body || {};
+  const updateData: Record<string, unknown> = {};
+  if (typeof isPublished === "boolean") updateData.isPublished = isPublished;
+  if (clientName) updateData.clientName = clientName;
+  if (clientRole) updateData.clientRole = clientRole;
+  if (company) updateData.company = company;
+  if (quote) updateData.quote = quote;
+  if (videoUrl) updateData.videoUrl = videoUrl;
+  if (metric !== undefined) updateData.metric = metric;
+  if (metricLabel !== undefined) updateData.metricLabel = metricLabel;
+
+  const [updated] = await db
+    .update(clientTestimonialsTable)
+    .set(updateData)
+    .where(eq(clientTestimonialsTable.id, id))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "Testimonial not found" });
+    return;
+  }
+  res.json(updated);
+});
+
+router.delete("/admin/testimonials/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  await db.delete(clientTestimonialsTable).where(eq(clientTestimonialsTable.id, id));
+  res.status(204).end();
+});
 
 router.get("/admin/summary", async (_req: AdminRequest, res) => {
   const leads = await db.select().from(leadsTable);
   const bookings = await db.select().from(bookingsTable);
   const videos = await db.select().from(videoAssetsTable).where(eq(videoAssetsTable.isPublished, true)).limit(1);
-  let calendarConnected = false;
-  try {
-    calendarConnected = (await listGoogleCalendars()).length > 0;
-  } catch {
-    calendarConnected = false;
-  }
 
   const payload = {
     totalLeads: leads.length,
@@ -243,7 +368,7 @@ router.get("/admin/summary", async (_req: AdminRequest, res) => {
       (booking) => booking.status === "approved" && booking.startsAt.getTime() > Date.now(),
     ).length,
     publishedVideo: videos.length > 0,
-    calendarConnected,
+    calendarConnected: false,
   };
   res.json(GetAdminSummaryResponse.parse(payload));
 });
@@ -274,9 +399,28 @@ router.patch("/admin/leads/:id/status", async (req, res) => {
   res.json((await import("@workspace/api-zod")).UpdateLeadStatusResponse.parse(serializeLead(lead)));
 });
 
+router.delete("/admin/leads/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id || Number.isNaN(id)) {
+    res.status(400).json({ error: "Invalid lead ID" });
+    return;
+  }
+  await db.delete(bookingsTable).where(eq(bookingsTable.leadId, id));
+  const [deleted] = await db.delete(leadsTable).where(eq(leadsTable.id, id)).returning();
+  if (!deleted) {
+    res.status(404).json({ error: "Lead not found" });
+    return;
+  }
+  res.status(204).end();
+});
+
 router.get("/admin/video", async (_req, res) => {
   const [video] = await db.select().from(videoAssetsTable).orderBy(desc(videoAssetsTable.createdAt)).limit(1);
-  res.json(GetAdminVideoResponse.parse(video ? serializeVideo(video) : null));
+  if (!video) {
+    res.json(null);
+    return;
+  }
+  res.json(GetAdminVideoResponse.parse(serializeVideo(video)));
 });
 
 router.post("/admin/video", async (req, res) => {
@@ -343,26 +487,10 @@ router.patch("/admin/bookings/:id/approve", async (req, res) => {
     res.status(404).json({ error: "Booking not found" });
     return;
   }
-  const calendars = await listGoogleCalendars();
-  const calendar = calendars.find((candidate) => candidate.primary) ?? calendars[0];
-  if (!calendar) {
-    res.status(409).json({ error: "Connect a writable Google Calendar before approving bookings" });
-    return;
-  }
-  const meeting = await createConsultationEvent({
-    calendarId: calendar.id,
-    clientName: booking.clientName,
-    clientEmail: booking.clientEmail,
-    startsAt: booking.startsAt,
-    endsAt: booking.endsAt,
-    timezone: booking.timezone,
-  });
   const [updated] = await db
     .update(bookingsTable)
     .set({
       status: "approved",
-      calendarEventId: meeting.calendarEventId,
-      meetingUrl: meeting.meetingUrl,
     })
     .where(eq(bookingsTable.id, booking.id))
     .returning();
@@ -393,26 +521,17 @@ router.patch("/admin/bookings/:id/status", async (req, res) => {
 });
 
 router.get("/admin/calendar/status", async (_req, res) => {
-  try {
-    const calendars = await listGoogleCalendars();
-    const primary = calendars.find((calendar) => calendar.primary) ?? calendars[0];
-    res.json(GetCalendarStatusResponse.parse({
-      connected: calendars.length > 0,
-      provider: "google-calendar",
-      calendarId: primary?.id ?? null,
-    }));
-  } catch {
-    res.json(GetCalendarStatusResponse.parse({
-      connected: false,
-      provider: "google-calendar",
-      calendarId: null,
-    }));
-  }
+  res.json({
+    connected: false,
+    provider: "none",
+    calendarId: null,
+    accountEmail: null,
+    hasCredentials: false,
+  });
 });
 
 router.get("/admin/calendar/calendars", async (_req, res) => {
-  const calendars = await listGoogleCalendars();
-  res.json(ListCalendarsResponse.parse(calendars));
+  res.json([]);
 });
 
 export default router;

@@ -63,8 +63,39 @@ export const bookingsTable = pgTable("bookings", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const clientTestimonialsTable = pgTable("client_testimonials", {
+  id: serial("id").primaryKey(),
+  clientName: text("client_name").notNull(),
+  clientRole: text("client_role").notNull(),
+  company: text("company").notNull(),
+  quote: text("quote").notNull(),
+  videoUrl: text("video_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  metric: text("metric"),
+  metricLabel: text("metric_label"),
+  isPublished: boolean("is_published").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const googleCalendarSettingsTable = pgTable("google_calendar_settings", {
+  id: serial("id").primaryKey(),
+  adminEmail: text("admin_email").notNull().default("admin@spectra.agency"),
+  clientId: text("client_id"),
+  clientSecret: text("client_secret"),
+  redirectUri: text("redirect_uri"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  tokenExpiry: timestamp("token_expiry", { withTimezone: true }),
+  calendarId: text("calendar_id").default("primary"),
+  accountEmail: text("account_email"),
+  connected: boolean("connected").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type AdminUser = typeof adminUsersTable.$inferSelect;
 export type Lead = typeof leadsTable.$inferSelect;
 export type VideoAsset = typeof videoAssetsTable.$inferSelect;
 export type AvailabilityRule = typeof availabilityRulesTable.$inferSelect;
 export type Booking = typeof bookingsTable.$inferSelect;
+export type ClientTestimonial = typeof clientTestimonialsTable.$inferSelect;
+export type GoogleCalendarSettings = typeof googleCalendarSettingsTable.$inferSelect;
