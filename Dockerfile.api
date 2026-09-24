@@ -7,12 +7,14 @@ RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json .npmrc ./
 COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
-COPY artifacts/spectra-agency/package.json ./artifacts/spectra-agency/package.json
+COPY artifacts/spectra-agency/ ./artifacts/spectra-agency/
 COPY artifacts/mockup-sandbox/package.json ./artifacts/mockup-sandbox/package.json
 COPY scripts/package.json ./scripts/package.json
 
 RUN pnpm install
 
+# Build both frontend and backend
+RUN pnpm --filter @workspace/spectra-agency run build
 RUN pnpm --filter @workspace/api-server run build
 
 FROM node:20-alpine AS runner
@@ -24,8 +26,10 @@ ENV PORT=5050
 
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
+# Copy built backend and frontend bundles
 COPY --from=builder /app/artifacts/api-server/dist ./artifacts/api-server/dist
 COPY --from=builder /app/artifacts/api-server/package.json ./artifacts/api-server/package.json
+COPY --from=builder /app/artifacts/spectra-agency/dist/public ./artifacts/spectra-agency/dist/public
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/package.json ./package.json
