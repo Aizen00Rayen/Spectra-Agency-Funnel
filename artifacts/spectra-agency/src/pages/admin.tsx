@@ -56,6 +56,7 @@ import {
   useUpdateBookingStatus,
   useUpdateLeadStatus,
 } from "@workspace/api-client-react";
+import { apiUrl } from "@/lib/api";
 import { useAdminLang, type AdminLang } from "./admin-i18n";
 
 function getAdminSessionUser(): { fullName: string; firstName: string; email: string } {
@@ -75,7 +76,7 @@ function getAdminSessionUser(): { fullName: string; firstName: string; email: st
 export function handleAdminSignOut() {
   try {
     const token = typeof window !== "undefined" ? localStorage.getItem("spectra_admin_token") : null;
-    fetch("/api/admin/logout", {
+    fetch(apiUrl("/api/admin/logout"), {
       method: "POST",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }).catch(() => {});
@@ -667,7 +668,7 @@ export function AdminLeads() {
   const handleDeleteLead = async (id: number) => {
     try {
       setIsDeleting(true);
-      const res = await fetch(`/api/admin/leads/${id}`, {
+      const res = await fetch(apiUrl(`/api/admin/leads/${id}`), {
         method: "DELETE",
         headers: authHeaders,
       });
@@ -1256,7 +1257,7 @@ export function AdminVideo() {
             <div className="admin-video-preview">
               <div style={{ borderRadius: "10px", overflow: "hidden", background: "#05080c", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <video
-                  src={`/api/storage/objects/${current.objectPath.replace(/^\/objects\//, "")}`}
+                  src={apiUrl(`/api/storage/objects/${current.objectPath.replace(/^\/objects\//, "")}`)}
                   controls
                   style={{ width: "100%", maxHeight: "260px", display: "block" }}
                 />
@@ -1733,7 +1734,7 @@ export function AdminTestimonials() {
     try {
       setUploadingVideo(true);
       setFormFeedback(null);
-      const reqRes = await fetch("/api/storage/uploads/request-url", {
+      const reqRes = await fetch(apiUrl("/api/storage/uploads/request-url"), {
         method: "POST",
         headers,
         body: JSON.stringify({ name: file.name, size: file.size }),
@@ -1745,7 +1746,7 @@ export function AdminTestimonials() {
         body: file,
       });
       if (!uploadRes.ok) throw new Error("Could not upload video file");
-      setVideoUrl(`/api/storage${objectPath}`);
+      setVideoUrl(apiUrl(`/api/storage${objectPath}`));
       setFormFeedback({ text: "Video file uploaded successfully!", kind: "success" });
     } catch (err: any) {
       setFormFeedback({ text: err.message || "Failed to upload video", kind: "error" });
@@ -1758,7 +1759,7 @@ export function AdminTestimonials() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/admin/testimonials", { headers });
+      const res = await fetch(apiUrl("/api/admin/testimonials"), { headers });
       if (!res.ok) throw new Error("Failed to fetch testimonials");
       const data = await res.json();
       setItems(data);
@@ -1775,7 +1776,7 @@ export function AdminTestimonials() {
 
   const togglePublish = async (id: number, current: boolean) => {
     try {
-      const res = await fetch(`/api/admin/testimonials/${id}`, {
+      const res = await fetch(apiUrl(`/api/admin/testimonials/${id}`), {
         method: "PATCH",
         headers,
         body: JSON.stringify({ isPublished: !current }),
@@ -1791,7 +1792,7 @@ export function AdminTestimonials() {
   const deleteTestimonial = async (id: number) => {
     if (!confirm(t.feedback.deleteConfirm)) return;
     try {
-      const res = await fetch(`/api/admin/testimonials/${id}`, {
+      const res = await fetch(apiUrl(`/api/admin/testimonials/${id}`), {
         method: "DELETE",
         headers,
       });
@@ -1812,7 +1813,7 @@ export function AdminTestimonials() {
     try {
       setSubmitting(true);
       setFormFeedback(null);
-      const res = await fetch("/api/admin/testimonials", {
+      const res = await fetch(apiUrl("/api/admin/testimonials"), {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -2212,7 +2213,7 @@ export function AdminPortfolio() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/admin/portfolio", { headers });
+      const res = await fetch(apiUrl("/api/admin/portfolio"), { headers });
       if (!res.ok) throw new Error("Failed to fetch portfolio websites");
       const data = await res.json();
       setItems(data);
@@ -2231,7 +2232,7 @@ export function AdminPortfolio() {
     try {
       setUploadingImage(true);
       setFormFeedback(null);
-      const reqRes = await fetch("/api/storage/uploads/request-url", {
+      const reqRes = await fetch(apiUrl("/api/storage/uploads/request-url"), {
         method: "POST",
         headers,
         body: JSON.stringify({ name: file.name, size: file.size }),
@@ -2257,7 +2258,7 @@ export function AdminPortfolio() {
 
   const togglePublish = async (id: number, current: boolean) => {
     try {
-      const res = await fetch(`/api/admin/portfolio/${id}`, {
+      const res = await fetch(apiUrl(`/api/admin/portfolio/${id}`), {
         method: "PATCH",
         headers,
         body: JSON.stringify({ isPublished: !current }),
@@ -2273,7 +2274,7 @@ export function AdminPortfolio() {
   const deleteItem = async (id: number) => {
     if (!confirm("Are you sure you want to remove this showcase website?")) return;
     try {
-      const res = await fetch(`/api/admin/portfolio/${id}`, {
+      const res = await fetch(apiUrl(`/api/admin/portfolio/${id}`), {
         method: "DELETE",
         headers,
       });
@@ -2299,7 +2300,7 @@ export function AdminPortfolio() {
     try {
       setSubmitting(true);
       setFormFeedback(null);
-      const res = await fetch("/api/admin/portfolio", {
+      const res = await fetch(apiUrl("/api/admin/portfolio"), {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -2396,8 +2397,9 @@ export function AdminPortfolio() {
           ) : (
             <div className="admin-feedback-list">
               {items.map((item) => {
+                const rawImg = item.imageUrl ? (item.imageUrl.startsWith('/objects/') ? `/api/storage${item.imageUrl}` : item.imageUrl) : undefined;
                 const previewImg =
-                  item.imageUrl ||
+                  (rawImg ? apiUrl(rawImg) : null) ||
                   `https://api.microlink.io/?url=${encodeURIComponent(item.url)}&screenshot=true&embed=screenshot.url`;
                 return (
                   <div key={item.id} className="admin-feedback-card">

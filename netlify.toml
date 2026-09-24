@@ -1,0 +1,17 @@
+[build]
+  publish = "artifacts/spectra-agency/dist/public"
+  command = "pnpm run build"
+
+# SPA Fallback for client routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security headers for static frontend distribution
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

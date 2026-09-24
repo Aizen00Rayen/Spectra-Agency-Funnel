@@ -1,0 +1,39 @@
+services:
+  spectra-postgres:
+    image: postgres:16-alpine
+    container_name: spectra-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spectra
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-spectra_secure_password_2026}
+      POSTGRES_DB: spectra
+    ports:
+      # Bind exclusively to 127.0.0.1 so it is hidden and not accessible externally
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - spectra_pgdata:/var/lib/postgresql/data
+
+  spectra-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: spectra-api
+    restart: unless-stopped
+    ports:
+      # Bind exclusively to 127.0.0.1 so it is hidden behind Nginx reverse proxy
+      - "127.0.0.1:5050:5050"
+    environment:
+      PORT: "5050"
+      DATABASE_URL: postgresql://spectra:${DB_PASSWORD:-spectra_secure_password_2026}@spectra-postgres:5432/spectra
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@spectra.agency}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-SpectraAdmin2026!Secure}
+      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:-spectra_session_secret_change_me_in_prod_12345}
+      STREAM_SECRET: ${STREAM_SECRET:-spectra_stream_secret_change_me_in_prod_12345}
+    depends_on:
+      - spectra-postgres
+    volumes:
+      - spectra_uploads:/app/artifacts/api-server/uploads
+
+volumes:
+  spectra_pgdata:
+  spectra_uploads:

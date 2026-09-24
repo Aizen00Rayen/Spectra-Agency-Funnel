@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 interface ProtectedVideoPlayerProps {
   url: string;
@@ -47,9 +48,9 @@ export function ProtectedVideoPlayer({
   const [isScrubbing, setIsScrubbing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Clean the URL to be relative if pointing to /api/storage/
+  // Clean and resolve the URL to support direct API host or relative proxy
   const cleanUrl = url.includes('/api/storage/')
-    ? url.substring(url.indexOf('/api/storage/'))
+    ? apiUrl(url.substring(url.indexOf('/api/storage/')))
     : url;
 
   // Handle Play / Pause toggle

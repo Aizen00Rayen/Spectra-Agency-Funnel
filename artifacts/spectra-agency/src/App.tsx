@@ -13,6 +13,7 @@ import { AdminLangProvider, type AdminLang } from '@/pages/admin-i18n';
 import { ProtectedVideoPlayer } from '@/components/ProtectedVideoPlayer';
 import { AccordionGallery } from '@/components/AccordionGallery';
 import { setAuthTokenGetter, useGetPublicConfig } from '@workspace/api-client-react';
+import { apiUrl } from '@/lib/api';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, Calendar, CalendarDays, Check, ChevronDown,
   Clock3, ExternalLink, Globe2, Lock, Menu, MessageSquareQuote, Play, RefreshCw, ShieldCheck, Sparkles, User, Video, Volume2, VolumeX, X, Zap,
@@ -191,7 +192,7 @@ function PublicHome() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/public/testimonials')
+    fetch(apiUrl('/api/public/testimonials'))
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (Array.isArray(data)) {
@@ -200,7 +201,7 @@ function PublicHome() {
       })
       .catch(() => {});
 
-    fetch('/api/public/portfolio')
+    fetch(apiUrl('/api/public/portfolio'))
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (Array.isArray(data)) {
@@ -297,8 +298,9 @@ function PublicHome() {
           ];
 
     return list.map((site: any) => {
+      const rawImg = site.imageUrl ? (site.imageUrl.startsWith('/objects/') ? `/api/storage${site.imageUrl}` : site.imageUrl) : undefined;
       const snapshotUrl =
-        site.imageUrl ||
+        (rawImg ? apiUrl(rawImg) : null) ||
         `https://api.microlink.io/?url=${encodeURIComponent(site.url)}&screenshot=true&embed=screenshot.url`;
       return {
         image: snapshotUrl,
@@ -345,7 +347,7 @@ function PublicHome() {
       const validDescription = rawDesc.length >= 10 ? rawDesc : (rawDesc ? `${rawDesc} (strategic consultation)` : 'Strategic consultation request');
       const services = selectedServices.length > 0 ? selectedServices.map(s => stripHtml(s)) : ['Digital Strategy'];
 
-      const leadRes = await fetch('/api/leads', {
+      const leadRes = await fetch(apiUrl('/api/leads'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -377,7 +379,7 @@ function PublicHome() {
         slotLabel = `${currentDay.label} · ${selectedSlotTime} · GMT+1 (${lang === 'ar' ? 'تلمسان' : 'Tlemcen'})`;
 
         try {
-          await fetch('/api/bookings', {
+          await fetch(apiUrl('/api/bookings'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1379,7 +1381,7 @@ function AdminLoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await fetch(apiUrl('/api/admin/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
