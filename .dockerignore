@@ -1,0 +1,10 @@
+node_modules
+.git
+.env
+artifacts/api-server/dist
+artifacts/api-server/uploads
+artifacts/spectra-agency/dist
+artifacts/spectra-agency/node_modules
+artifacts/mockup-sandbox/dist
+artifacts/mockup-sandbox/node_modules
+dist
