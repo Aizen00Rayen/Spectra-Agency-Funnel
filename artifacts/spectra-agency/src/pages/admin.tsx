@@ -16,6 +16,7 @@ import {
   Gauge,
   Globe2,
   LayoutDashboard,
+  Link2,
   LogOut,
   Mail,
   Menu,
@@ -57,6 +58,7 @@ import {
   useUpdateLeadStatus,
 } from "@workspace/api-client-react";
 import { apiUrl } from "@/lib/api";
+import { extractGoogleDriveEmbedUrl } from "@/components/ProtectedVideoPlayer";
 import { useAdminLang, type AdminLang } from "./admin-i18n";
 
 function getAdminSessionUser(): { fullName: string; firstName: string; email: string } {
@@ -1198,11 +1200,50 @@ export function AdminVideo() {
   const client = useQueryClient();
   const { t, formatAdminDate } = useAdminLang();
 
+  const [sourceType, setSourceType] = useState<"link" | "file">("link");
   const [title, setTitle] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState<"idle" | "requesting" | "uploading" | "saving" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const accept = "video/mp4,video/webm,video/quicktime";
+
+  const detectedDriveEmbed = useMemo(() => {
+    return extractGoogleDriveEmbedUrl(linkUrl);
+  }, [linkUrl]);
+
+  const saveLink = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!title.trim() || !linkUrl.trim()) {
+      setMessage(t.video.titleLinkPrompt);
+      return;
+    }
+    try {
+      setMessage("");
+      setProgress("saving");
+      const driveEmbed = extractGoogleDriveEmbedUrl(linkUrl.trim());
+      const finalUrl = driveEmbed || linkUrl.trim();
+      const mimeType = driveEmbed ? "video/google-drive" : "video/mp4";
+      await createAsset.mutateAsync({
+        data: {
+          title: title.trim(),
+          objectPath: finalUrl,
+          mimeType,
+          sizeBytes: 1,
+        },
+      });
+      setProgress("success");
+      setMessage(t.video.saveLinkSuccess);
+      setLinkUrl("");
+      setTitle("");
+      client.invalidateQueries({ queryKey: getGetAdminVideoQueryKey() });
+      client.invalidateQueries({ queryKey: getGetAdminSummaryQueryKey() });
+    } catch (err: any) {
+      console.error("VSL save link error:", err);
+      setProgress("error");
+      setMessage(err?.message || t.video.uploadError);
+    }
+  };
 
   const upload = async (event: FormEvent) => {
     event.preventDefault();
@@ -1236,6 +1277,8 @@ export function AdminVideo() {
   };
 
   const current = query.data;
+  const isCurrentExternal = current?.objectPath?.startsWith("http://") || current?.objectPath?.startsWith("https://");
+  const currentDriveEmbed = isCurrentExternal ? extractGoogleDriveEmbedUrl(current.objectPath) : null;
 
   return (
     <AdminShell>
@@ -1256,18 +1299,30 @@ export function AdminVideo() {
           ) : current ? (
             <div className="admin-video-preview">
               <div style={{ borderRadius: "10px", overflow: "hidden", background: "#05080c", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <video
-                  src={apiUrl(`/api/storage/objects/${current.objectPath.replace(/^\/objects\//, "")}`)}
-                  controls
-                  style={{ width: "100%", maxHeight: "260px", display: "block" }}
-                />
+                {currentDriveEmbed ? (
+                  <iframe
+                    src={currentDriveEmbed}
+                    title={current.title}
+                    style={{ width: "100%", height: "260px", border: "none", display: "block" }}
+                    allow="autoplay; fullscreen"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={isCurrentExternal ? current.objectPath : apiUrl(`/api/storage/objects/${current.objectPath.replace(/^\/objects\//, "")}`)}
+                    controls
+                    style={{ width: "100%", maxHeight: "260px", display: "block" }}
+                  />
+                )}
               </div>
               <div className="admin-video-meta">
                 <span>
-                  <FileVideo size={14} />
-                  {current.mimeType}
+                  {currentDriveEmbed ? <Globe2 size={14} /> : <FileVideo size={14} />}
+                  {currentDriveEmbed ? "Google Drive Stream" : current.mimeType}
                 </span>
-                <span>{(current.sizeBytes / 1024 / 1024).toFixed(1)} MB</span>
+                <span>
+                  {isCurrentExternal ? t.video.cloudHosted : `${(current.sizeBytes / 1024 / 1024).toFixed(1)} MB`}
+                </span>
                 <span>
                   {t.video.added} {formatAdminDate(current.createdAt)}
                 </span>
@@ -1303,57 +1358,165 @@ export function AdminVideo() {
               <p className="admin-kicker">{t.video.newAsset}</p>
               <h2>{t.video.uploadVsl}</h2>
             </div>
-            <UploadCloud size={17} className="admin-muted-icon" />
+            {sourceType === "link" ? <Link2 size={17} className="admin-muted-icon" /> : <UploadCloud size={17} className="admin-muted-icon" />}
           </div>
-          <form className="admin-upload-form" onSubmit={upload}>
-            <label className="admin-field">
-              <span>{t.video.assetTitle}</span>
-              <input
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder={t.video.assetTitlePlaceholder}
-                data-testid="input-video-title"
-              />
-            </label>
-            <label className="admin-dropzone">
-              <input
-                type="file"
-                accept={accept}
-                onChange={(event) => setFile(event.target.files?.[0] || null)}
-                data-testid="input-video-file"
-              />
-              <UploadCloud size={24} />
-              <strong>{file ? file.name : t.video.chooseFile}</strong>
-              <small>{t.video.fileTypes}</small>
-            </label>
-            {progress !== "idle" && progress !== "error" && progress !== "success" && (
-              <div className="admin-upload-status">
-                <span className="admin-upload-line">
-                  <i style={{ width: progress === "requesting" ? "25%" : progress === "uploading" ? "65%" : "90%" }} />
-                </span>
-                <small>
-                  {progress === "requesting"
-                    ? t.video.requestingUpload
-                    : progress === "uploading"
-                    ? t.video.uploadingDirect
-                    : t.video.savingMetadata}
-                </small>
-              </div>
-            )}
-            {message && (
-              <p className={`admin-form-message ${progress === "error" ? "is-error" : progress === "success" ? "is-success" : ""}`}>
-                {message}
-              </p>
-            )}
+
+          {/* Source Selector Tabs */}
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px", background: "rgba(255,255,255,0.04)", padding: "4px", borderRadius: "8px" }}>
             <button
-              className="admin-button admin-button-primary admin-full-button"
-              disabled={progress !== "idle" && progress !== "error" && progress !== "success"}
-              data-testid="button-upload-video"
+              type="button"
+              onClick={() => {
+                setSourceType("link");
+                setMessage("");
+                setProgress("idle");
+              }}
+              style={{
+                flex: 1,
+                padding: "8px 12px",
+                borderRadius: "6px",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 500,
+                background: sourceType === "link" ? "rgba(121,174,244,0.2)" : "transparent",
+                color: sourceType === "link" ? "#9ec5f7" : "#8292a6",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                transition: "all 0.2s ease",
+              }}
             >
-              <UploadCloud size={15} /> {t.video.uploadSecurely}
+              <Link2 size={14} />
+              {t.video.linkTab}
             </button>
-            <small className="admin-form-caption">{t.video.uploadDirectNote}</small>
-          </form>
+            <button
+              type="button"
+              onClick={() => {
+                setSourceType("file");
+                setMessage("");
+                setProgress("idle");
+              }}
+              style={{
+                flex: 1,
+                padding: "8px 12px",
+                borderRadius: "6px",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 500,
+                background: sourceType === "file" ? "rgba(121,174,244,0.2)" : "transparent",
+                color: sourceType === "file" ? "#9ec5f7" : "#8292a6",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                transition: "all 0.2s ease",
+              }}
+            >
+              <UploadCloud size={14} />
+              {t.video.fileTab}
+            </button>
+          </div>
+
+          {sourceType === "link" ? (
+            <form className="admin-upload-form" onSubmit={saveLink}>
+              <label className="admin-field">
+                <span>{t.video.assetTitle}</span>
+                <input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder={t.video.assetTitlePlaceholder}
+                  data-testid="input-video-title"
+                />
+              </label>
+              <label className="admin-field">
+                <span>{t.video.driveUrlLabel}</span>
+                <input
+                  value={linkUrl}
+                  onChange={(event) => setLinkUrl(event.target.value)}
+                  placeholder={t.video.driveUrlPlaceholder}
+                  data-testid="input-video-link"
+                />
+              </label>
+
+              {detectedDriveEmbed && (
+                <div style={{ padding: "8px 12px", borderRadius: "6px", background: "rgba(121,174,244,0.12)", border: "1px solid rgba(121,174,244,0.25)", display: "flex", alignItems: "center", gap: "8px", fontSize: "11px", color: "#9ec5f7" }}>
+                  <Check size={14} />
+                  <span>Google Drive link verified &amp; ready for high-speed streaming</span>
+                </div>
+              )}
+
+              <small className="admin-form-caption" style={{ display: "block" }}>
+                {t.video.driveHelper}
+                <br />
+                <span style={{ color: "#79aef4", opacity: 0.85 }}>{t.video.driveTip}</span>
+              </small>
+
+              {message && (
+                <p className={`admin-form-message ${progress === "error" ? "is-error" : progress === "success" ? "is-success" : ""}`}>
+                  {message}
+                </p>
+              )}
+              <button
+                className="admin-button admin-button-primary admin-full-button"
+                disabled={progress === "saving"}
+                data-testid="button-save-video-link"
+              >
+                <Link2 size={15} /> {progress === "saving" ? t.video.savingLink : t.video.saveLinkBtn}
+              </button>
+            </form>
+          ) : (
+            <form className="admin-upload-form" onSubmit={upload}>
+              <label className="admin-field">
+                <span>{t.video.assetTitle}</span>
+                <input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder={t.video.assetTitlePlaceholder}
+                  data-testid="input-video-title"
+                />
+              </label>
+              <label className="admin-dropzone">
+                <input
+                  type="file"
+                  accept={accept}
+                  onChange={(event) => setFile(event.target.files?.[0] || null)}
+                  data-testid="input-video-file"
+                />
+                <UploadCloud size={24} />
+                <strong>{file ? file.name : t.video.chooseFile}</strong>
+                <small>{t.video.fileTypes}</small>
+              </label>
+              {progress !== "idle" && progress !== "error" && progress !== "success" && (
+                <div className="admin-upload-status">
+                  <span className="admin-upload-line">
+                    <i style={{ width: progress === "requesting" ? "25%" : progress === "uploading" ? "65%" : "90%" }} />
+                  </span>
+                  <small>
+                    {progress === "requesting"
+                      ? t.video.requestingUpload
+                      : progress === "uploading"
+                      ? t.video.uploadingDirect
+                      : t.video.savingMetadata}
+                  </small>
+                </div>
+              )}
+              {message && (
+                <p className={`admin-form-message ${progress === "error" ? "is-error" : progress === "success" ? "is-success" : ""}`}>
+                  {message}
+                </p>
+              )}
+              <button
+                className="admin-button admin-button-primary admin-full-button"
+                disabled={progress !== "idle" && progress !== "error" && progress !== "success"}
+                data-testid="button-upload-video"
+              >
+                <UploadCloud size={15} /> {t.video.uploadSecurely}
+              </button>
+              <small className="admin-form-caption">{t.video.uploadDirectNote}</small>
+            </form>
+          )}
         </section>
       </div>
     </AdminShell>

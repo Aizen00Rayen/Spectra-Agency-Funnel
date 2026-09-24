@@ -128,6 +128,17 @@ export interface AdminTranslations {
     uploadSuccess: string;
     uploadError: string;
     titleFilePrompt: string;
+    linkTab: string;
+    fileTab: string;
+    driveUrlLabel: string;
+    driveUrlPlaceholder: string;
+    driveHelper: string;
+    driveTip: string;
+    saveLinkBtn: string;
+    savingLink: string;
+    saveLinkSuccess: string;
+    titleLinkPrompt: string;
+    cloudHosted: string;
   };
   availability: {
     eyebrow: string;
@@ -338,6 +349,17 @@ export const adminCopies: Record<AdminLang, AdminTranslations> = {
       uploadSuccess: "The VSL is uploaded and ready to review.",
       uploadError: "Upload could not be completed. Nothing was published.",
       titleFilePrompt: "Add a title and choose a supported video file.",
+      linkTab: "Google Drive / Link",
+      fileTab: "Upload Video File",
+      driveUrlLabel: "Google Drive / Video Link",
+      driveUrlPlaceholder: "https://drive.google.com/file/d/.../view",
+      driveHelper: "Paste a share link from Google Drive. Ensure file access is set to 'Anyone with the link can view'.",
+      driveTip: "Tip: In Google Drive share settings, you can uncheck 'Viewers can download' to protect your video.",
+      saveLinkBtn: "Save Video Link",
+      savingLink: "Saving video link…",
+      saveLinkSuccess: "Video link saved successfully. You can now publish it.",
+      titleLinkPrompt: "Please provide a title and a valid video or Google Drive link.",
+      cloudHosted: "Cloud Hosted (Drive / CDN)",
     },
     availability: {
       eyebrow: "Capacity settings",
@@ -546,6 +568,17 @@ export const adminCopies: Record<AdminLang, AdminTranslations> = {
       uploadSuccess: "La VSL est téléversée et prête pour révision.",
       uploadError: "Le transfert n'a pas pu aboutir. Rien n'a été publié.",
       titleFilePrompt: "Ajoutez un titre et choisissez un fichier vidéo compatible.",
+      linkTab: "Lien Google Drive / Web",
+      fileTab: "Téléverser un fichier",
+      driveUrlLabel: "Lien Google Drive ou vidéo externe",
+      driveUrlPlaceholder: "https://drive.google.com/file/d/.../view",
+      driveHelper: "Collez le lien de partage Google Drive. Assurez-vous que l'accès est défini sur « Tous les utilisateurs disposant du lien peuvent voir ».",
+      driveTip: "Conseil : Dans les paramètres de partage Drive, vous pouvez désactiver le téléchargement par les lecteurs.",
+      saveLinkBtn: "Enregistrer le lien vidéo",
+      savingLink: "Enregistrement du lien…",
+      saveLinkSuccess: "Lien vidéo enregistré avec succès. Vous pouvez maintenant le publier.",
+      titleLinkPrompt: "Veuillez fournir un titre et un lien Google Drive ou vidéo valide.",
+      cloudHosted: "Hébergé sur le Cloud (Drive / CDN)",
     },
     availability: {
       eyebrow: "Paramètres de capacité",
@@ -754,6 +787,17 @@ export const adminCopies: Record<AdminLang, AdminTranslations> = {
       uploadSuccess: "تم رفع الفيديو بنجاح وهو جاهز للمعاينة.",
       uploadError: "تعذر إتمام الرفع. لم يتم نشر أي ملف.",
       titleFilePrompt: "يرجى كتابة عنوان واختيار ملف فيديو صالح.",
+      linkTab: "رابط Google Drive / خارجي",
+      fileTab: "رفع ملف فيديو",
+      driveUrlLabel: "رابط Google Drive أو فيديو خارجي",
+      driveUrlPlaceholder: "https://drive.google.com/file/d/.../view",
+      driveHelper: "الصق رابط المشاركة من Google Drive. تأكد من ضبط إمكانية الوصول على «أي شخص لديه الرابط يمكنه المشاهدة».",
+      driveTip: "ملاحظة: يمكنك في إعدادات مشاركة Drive إلغاء تفعيل خيار التحميل لمنع المشاهدين من تنزيل الفيديو.",
+      saveLinkBtn: "حفظ رابط الفيديو",
+      savingLink: "جاري حفظ الرابط…",
+      saveLinkSuccess: "تم حفظ رابط الفيديو بنجاح. يمكنك الآن نشره.",
+      titleLinkPrompt: "يرجى إدخال عنوان ورابط صالح من Google Drive أو رابط فيديو.",
+      cloudHosted: "مستضاف سحابياً (Drive / CDN)",
     },
     availability: {
       eyebrow: "إعدادات أوقات العمل",

@@ -26,6 +26,19 @@ function formatTime(seconds: number): string {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
+export function extractGoogleDriveEmbedUrl(rawUrl: string): string | null {
+  if (!rawUrl) return null;
+  const trimmed = rawUrl.trim();
+  if (trimmed.includes('drive.google.com') && trimmed.includes('/preview')) {
+    return trimmed;
+  }
+  const match = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return `https://drive.google.com/file/d/${match[1]}/preview`;
+  }
+  return null;
+}
+
 export function ProtectedVideoPlayer({
   url,
   title = 'SPECTRA FIELD NOTES',
@@ -52,6 +65,15 @@ export function ProtectedVideoPlayer({
   const cleanUrl = url.includes('/api/storage/')
     ? apiUrl(url.substring(url.indexOf('/api/storage/')))
     : url;
+
+  const driveEmbedUrl = extractGoogleDriveEmbedUrl(cleanUrl);
+  const isEmbed = !!driveEmbedUrl;
+
+  useEffect(() => {
+    if (isEmbed) {
+      setIsLoading(false);
+    }
+  }, [isEmbed]);
 
   // Handle Play / Pause toggle
   const togglePlay = useCallback(() => {
@@ -243,6 +265,52 @@ export function ProtectedVideoPlayer({
 
   // Calculate progress percentage
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  if (isEmbed) {
+    return (
+      <div
+        ref={containerRef}
+        tabIndex={0}
+        className="relative h-full w-full select-none overflow-hidden bg-[#070b10] outline-none group"
+        data-testid="protected-video-player"
+      >
+        <iframe
+          src={driveEmbedUrl!}
+          title={title}
+          className="h-full w-full border-0"
+          allow="autoplay; fullscreen"
+          allowFullScreen
+          onLoad={() => setIsLoading(false)}
+        />
+
+        {/* Top Header bar overlay */}
+        <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between p-3 sm:p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
+          <div className="flex items-center gap-2 pointer-events-auto">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#79aef4]/30 bg-[#79aef4]/10 px-2.5 py-0.5 font-code text-[9px] sm:text-[10px] uppercase tracking-wider text-[#9ec5f7]">
+              <ShieldCheck size={11} className="text-[#79aef4]" />
+              {lang === 'ar' ? 'بث محمي' : lang === 'fr' ? 'FLUX PROTÉGÉ' : 'SECURE STREAM'}
+            </span>
+            <span className="font-code text-[10px] sm:text-xs text-[#cad5e2] tracking-wide truncate max-w-[200px] sm:max-w-md">
+              {title}
+            </span>
+          </div>
+
+          {onClose && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-white/10 text-[#d0dbe7] hover:bg-white/20 hover:text-white transition cursor-pointer pointer-events-auto"
+              title="Close"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

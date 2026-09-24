@@ -162,9 +162,13 @@ router.get("/public/config", async (req, res) => {
 
   let videoUrl: string | null = null;
   if (video) {
-    const filename = video.objectPath.replace(/^\/objects\//, "");
-    const ticket = generateStreamTicket(filename);
-    videoUrl = `${protocol}://${host}/api/storage/objects/${filename}?ticket=${ticket}`;
+    if (video.objectPath.startsWith("http://") || video.objectPath.startsWith("https://")) {
+      videoUrl = video.objectPath;
+    } else {
+      const filename = video.objectPath.replace(/^\/objects\//, "");
+      const ticket = generateStreamTicket(filename);
+      videoUrl = `${protocol}://${host}/api/storage/objects/${filename}?ticket=${ticket}`;
+    }
   }
 
   const payload = {
