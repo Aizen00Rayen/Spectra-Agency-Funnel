@@ -49,6 +49,7 @@ import {
   validateAdminCredentials,
   type AdminRequest,
 } from "../middlewares/adminAuth";
+import { adminLoginLimiter, leadSubmissionLimiter } from "../middlewares/security";
 import { generateStreamTicket } from "./storage";
 
 const router: IRouter = Router();
@@ -179,7 +180,7 @@ router.get("/public/config", async (req, res) => {
   res.json(GetPublicConfigResponse.parse(payload));
 });
 
-router.post("/leads", async (req, res) => {
+router.post("/leads", leadSubmissionLimiter, async (req, res) => {
   try {
     const body = req.body || {};
     const name = String(body.name || "").trim();
@@ -255,7 +256,7 @@ router.get("/public/availability", async (req, res) => {
   res.json(GetPublicAvailabilityResponse.parse(slots));
 });
 
-router.post("/bookings", async (req, res) => {
+router.post("/bookings", leadSubmissionLimiter, async (req, res) => {
   try {
     const input = CreateBookingBody.parse(req.body);
     const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, input.leadId)).limit(1);
@@ -340,7 +341,7 @@ router.get("/public/testimonials", async (req, res) => {
   res.json(signedTestimonials);
 });
 
-router.post("/admin/login", async (req, res) => {
+router.post("/admin/login", adminLoginLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) {
     res.status(400).json({ error: "Email and password are required" });

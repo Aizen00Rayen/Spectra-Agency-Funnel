@@ -246,7 +246,7 @@ export const AccordionGallery: FC<AccordionGalleryProps> = ({
         return (
           <Tag
             key={i}
-            ref={el => {
+            ref={(el: any) => {
               panelRefs.current[i] = el;
             }}
             className={`ag-panel${isActive ? ' ag-panel--active' : ''}`}

@@ -335,19 +335,24 @@ function PublicHome() {
     setPhoneError(false);
     setSubmittingBooking(true);
     try {
-      // 1. Create Lead with sanitized inputs
-      const desc = projectDescription.trim();
-      const validDescription = desc.length >= 10 ? desc : (desc ? `${desc} (strategic consultation)` : 'Strategic consultation request');
-      const services = selectedServices.length > 0 ? selectedServices : ['Digital Strategy'];
+      // 1. Sanitize all visitor inputs against XSS & script injections
+      const stripHtml = (val: string) => val.replace(/<[^>]*>?/gm, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim();
+      const cleanName = stripHtml(clientName);
+      const cleanCompany = stripHtml(companyName);
+      const cleanEmail = stripHtml(clientEmail).toLowerCase();
+      const cleanPhone = stripHtml(clientPhone);
+      const rawDesc = stripHtml(projectDescription);
+      const validDescription = rawDesc.length >= 10 ? rawDesc : (rawDesc ? `${rawDesc} (strategic consultation)` : 'Strategic consultation request');
+      const services = selectedServices.length > 0 ? selectedServices.map(s => stripHtml(s)) : ['Digital Strategy'];
 
       const leadRes = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: clientName.trim(),
-          company: companyName.trim(),
-          email: clientEmail.trim(),
-          phone: clientPhone.trim(),
+          name: cleanName,
+          company: cleanCompany,
+          email: cleanEmail,
+          phone: cleanPhone,
           projectDescription: validDescription,
           interestedServices: services,
         }),
@@ -1067,7 +1072,7 @@ function PublicHome() {
                     {selectedWebsiteTitle ? `"${selectedWebsiteTitle}"` : (lang === 'ar' ? 'هذا الموقع' : lang === 'fr' ? 'Ce site' : 'This website')}
                   </h2>
                   <p className="mt-4 text-sm leading-6 text-[#8997a8]">
-                    {t.portfolioGateNotice}
+                    {t.showcaseModalBody}
                   </p>
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                     <button
@@ -1077,7 +1082,7 @@ function PublicHome() {
                       }}
                       className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#e7edf4] py-3 text-sm font-bold text-[#080a0d] hover:bg-[#a9cbfb] transition active:scale-[0.98]"
                     >
-                      {t.portfolioGateAction}
+                      {t.showcaseModalBtn}
                       <ArrowRight size={15} />
                     </button>
                     <button

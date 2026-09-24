@@ -3,7 +3,7 @@ import crypto, { randomUUID } from "crypto";
 import path from "path";
 import fs from "fs";
 import { RequestUploadUrlBody, RequestUploadUrlResponse } from "@workspace/api-zod";
-import { requireAdmin } from "../middlewares/adminAuth";
+import { requireAdmin, verifyAdminSession } from "../middlewares/adminAuth";
 
 const router: IRouter = Router();
 
@@ -13,6 +13,18 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 }
 
 const STREAM_SECRET = process.env.STREAM_SECRET || "spectra-video-protection-key-2026";
+
+// Allowed media file extensions for videos and portfolio screenshots
+const ALLOWED_MEDIA_EXTENSIONS = new Set([
+  ".mp4",
+  ".webm",
+  ".mov",
+  ".m4v",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp",
+]);
 
 /**
  * Generate a cryptographically signed, short-lived stream ticket.
@@ -53,13 +65,17 @@ export function verifyStreamTicket(filename: string, ticket: string): boolean {
 
 router.post("/storage/uploads/request-url", requireAdmin, async (req, res) => {
   const input = RequestUploadUrlBody.parse(req.body);
-  const ext = input.name ? path.extname(input.name) : ".mp4";
+  const rawExt = input.name ? path.extname(input.name).toLowerCase() : ".mp4";
+  const ext = ALLOWED_MEDIA_EXTENSIONS.has(rawExt) ? rawExt : ".mp4";
   const fileId = `${Date.now()}-${randomUUID()}${ext}`;
 
   const rawHost = req.headers["x-forwarded-host"] || req.headers.host || "localhost:5000";
   const host = Array.isArray(rawHost) ? rawHost[0] : String(rawHost);
   const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
-  const uploadURL = `${protocol}://${host}/api/storage/uploads/${fileId}`;
+  
+  // Ephemeral upload ticket (valid for 30 minutes)
+  const uploadTicket = generateStreamTicket(fileId, 30 * 60 * 1000);
+  const uploadURL = `${protocol}://${host}/api/storage/uploads/${fileId}?uploadTicket=${uploadTicket}`;
   const objectPath = `/objects/${fileId}`;
 
   res.json(RequestUploadUrlResponse.parse({ uploadURL, objectPath }));
@@ -67,9 +83,36 @@ router.post("/storage/uploads/request-url", requireAdmin, async (req, res) => {
 
 router.put("/storage/uploads/:fileId", async (req, res) => {
   const fileId = path.basename(req.params.fileId);
-  const targetPath = path.join(UPLOADS_DIR, fileId);
 
+  // Strict alphanumeric filename check to prevent path traversal or special char injection
+  if (!/^[a-zA-Z0-9_\-\.]+$/.test(fileId)) {
+    res.status(400).json({ error: "Invalid filename format" });
+    return;
+  }
+
+  // File extension whitelist check
+  const ext = path.extname(fileId).toLowerCase();
+  if (!ALLOWED_MEDIA_EXTENSIONS.has(ext)) {
+    res.status(400).json({ error: "Disallowed file extension" });
+    return;
+  }
+
+  // Upload authorization verification: valid upload ticket or admin session
+  const uploadTicket = req.query.uploadTicket as string | undefined;
+  const isTicketValid = uploadTicket && verifyStreamTicket(fileId, uploadTicket);
+  const authHeader = req.headers.authorization;
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : undefined;
+  const cookieToken = req.cookies?.["spectra_admin_token"];
+  const isAdmin = verifyAdminSession(bearerToken || cookieToken);
+
+  if (!isTicketValid && !isAdmin) {
+    res.status(403).json({ error: "Upload authorization required or token expired" });
+    return;
+  }
+
+  const targetPath = path.join(UPLOADS_DIR, fileId);
   const writeStream = fs.createWriteStream(targetPath);
+
   req.pipe(writeStream);
 
   writeStream.on("finish", () => {

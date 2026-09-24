@@ -12,8 +12,21 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 
 import cookieParser from "cookie-parser";
+import {
+  apiRateLimiter,
+  permissionsPolicyMiddleware,
+  sanitizeMiddleware,
+  securityHeadersMiddleware,
+} from "./middlewares/security";
 
 const app: Express = express();
+
+// Disable technology disclosure header
+app.disable("x-powered-by");
+
+// Apply production-grade security headers & hardware isolation policies
+app.use(securityHeadersMiddleware);
+app.use(permissionsPolicyMiddleware);
 
 app.use(cookieParser());
 app.use(
@@ -49,8 +62,16 @@ if (process.env.CLERK_SECRET_KEY) {
 } else {
   logger.warn("CLERK_SECRET_KEY is not set. Clerk auth middleware skipped for local development.");
 }
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Request size limit & JSON body parser to prevent payload flooding DoS
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
+
+// XSS & Injection payload sanitization for all routes
+app.use(sanitizeMiddleware);
+
+// Global API rate limiting
+app.use("/api", apiRateLimiter);
 
 app.use("/api", router);
 
