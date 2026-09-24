@@ -1331,8 +1331,6 @@ function AdminLoginPage() {
       kicker: 'Spectra / Operating Room',
       title: 'Studio Admin Access',
       subtitle: 'Authenticate to access pipeline, client video reviews, and capacity.',
-      credBadge: 'Admin Credentials',
-      fillCreds: 'Fill Credentials',
       emailLabel: 'Work Email',
       passwordLabel: 'Password',
       submitBtn: 'Enter Operating Room',
@@ -1343,8 +1341,6 @@ function AdminLoginPage() {
       kicker: 'Spectra / Salle de contrôle',
       title: 'Accès Studio Admin',
       subtitle: 'Authentifiez-vous pour accéder au pipeline, aux retours vidéo et à la capacité.',
-      credBadge: 'Identifiants Admin',
-      fillCreds: 'Remplir automatiquement',
       emailLabel: 'Email professionnel',
       passwordLabel: 'Mot de passe',
       submitBtn: 'Entrer dans la salle de contrôle',
@@ -1355,8 +1351,6 @@ function AdminLoginPage() {
       kicker: 'سبيكترا / غرفة العمليات',
       title: 'دخول إدارة الاستوديو',
       subtitle: 'سجل الدخول للوصول إلى طلبات العملاء، مراجعات الفيديو، وإدارة الأوقات.',
-      credBadge: 'بيانات الدخول الإدارية',
-      fillCreds: 'تعبئة تلقائية',
       emailLabel: 'البريد الإلكتروني للعمل',
       passwordLabel: 'كلمة المرور',
       submitBtn: 'دخول غرفة العمليات',
@@ -1365,8 +1359,8 @@ function AdminLoginPage() {
     },
   }[lang];
 
-  const [email, setEmail] = useState('admin@spectra.agency');
-  const [password, setPassword] = useState('spectra2025');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1431,33 +1425,6 @@ function AdminLoginPage() {
           <p className="mt-2 text-xs text-[#8796a7]">{loginCopy.subtitle}</p>
         </div>
 
-        {/* Credentials Card */}
-        <div className="mb-6 rounded-xl border border-[#74a5e6]/25 bg-[#142236]/60 p-4 backdrop-blur-md">
-          <div className="flex items-center justify-between text-xs text-[#95bfe9]">
-            <span className="font-semibold flex items-center gap-1.5"><ShieldCheck size={14} className="text-[#7aafe8]" /> {loginCopy.credBadge}</span>
-            <button
-              type="button"
-              onClick={() => {
-                setEmail('admin@spectra.agency');
-                setPassword('spectra2025');
-              }}
-              className="text-[11px] underline underline-offset-2 hover:text-white cursor-pointer text-[#8dbcf3]"
-            >
-              {loginCopy.fillCreds}
-            </button>
-          </div>
-          <div className="mt-3 space-y-1.5 font-code text-[11px] text-[#c2d9f2]">
-            <div className="flex justify-between border-b border-white/[.07] pb-1">
-              <span className="text-[#7891aa]">Email:</span>
-              <span className="select-all font-medium text-[#d9e7f8]">admin@spectra.agency</span>
-            </div>
-            <div className="flex justify-between pt-0.5">
-              <span className="text-[#7891aa]">Password:</span>
-              <span className="select-all font-medium text-[#d9e7f8]">spectra2025</span>
-            </div>
-          </div>
-        </div>
-
         {error && (
           <div className="mb-4 rounded-lg border border-[#e2a1a7]/30 bg-[#e2a1a7]/10 p-3 text-xs text-[#f2b8bd]">
             {error}
@@ -1473,7 +1440,6 @@ function AdminLoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="focus-ring w-full min-h-[44px] rounded-lg border border-white/10 bg-white/[.04] px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
-              placeholder="admin@spectra.agency"
             />
           </div>
 
@@ -1485,7 +1451,6 @@ function AdminLoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="focus-ring w-full min-h-[44px] rounded-lg border border-white/10 bg-white/[.04] px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
-              placeholder="••••••••"
             />
           </div>
 
