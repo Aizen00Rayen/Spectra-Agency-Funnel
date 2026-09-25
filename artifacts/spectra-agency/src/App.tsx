@@ -241,7 +241,7 @@ const copy = {
       ],
       [
         'كيف يمكنني اتخاذ الخطوة الأولى والبدء معكم؟',
-        'يمكنك حجز جلسة استكشافية مدتها 30 دقيقة عبر التقويم التفاعلي في الأعلى، أو مراسلتنا مباشرة عبر واتساب (+213 556 61 47 40 / +213 555 24 71 70) لمناقشة أهداف مشروعك.',
+        'يمكنك حجز جلسة استكشافية مدتها 30 دقيقة عبر التقويم التفاعلي في هذه الصفحة، أو التواصل مباشرة مع فريقنا عبر واتساب لمناقشة تفاصيل مشروعك.',
       ],
     ],
     finalTitle: 'فصلك القادم يحتاج إلى نظام أفضل.',
@@ -296,6 +296,25 @@ function PublicHome() {
   const [submittingBooking, setSubmittingBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [confirmedDetails, setConfirmedDetails] = useState<{ name: string; email: string; slot: string; company: string } | null>(null);
+  const [showFloatingCta, setShowFloatingCta] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const consultationEl = document.getElementById('consultation');
+      const isPastHero = window.scrollY > 500;
+      if (!consultationEl) {
+        setShowFloatingCta(isPastHero);
+        return;
+      }
+      const rect = consultationEl.getBoundingClientRect();
+      const isConsultationOrBelow = rect.top < window.innerHeight * 0.8;
+      setShowFloatingCta(isPastHero && !isConsultationOrBelow);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
@@ -1121,7 +1140,7 @@ function PublicHome() {
                                 required
                                 value={clientName}
                                 onChange={(e) => setClientName(e.target.value)}
-                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-base sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
                                 placeholder={lang === 'ar' ? 'مثال: محمد بن علي' : lang === 'fr' ? 'ex. Maya Laurent' : 'e.g. Alex Morgan'}
                                 data-testid="input-name"
                               />
@@ -1135,7 +1154,7 @@ function PublicHome() {
                                 required
                                 value={companyName}
                                 onChange={(e) => setCompanyName(e.target.value)}
-                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-base sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
                                 placeholder={lang === 'ar' ? 'اسم الشركة أو العلامة التجارية' : lang === 'fr' ? 'Nom de l’entreprise' : 'Company or brand'}
                                 data-testid="input-company"
                               />
@@ -1150,7 +1169,7 @@ function PublicHome() {
                                 type="email"
                                 value={clientEmail}
                                 onChange={(e) => setClientEmail(e.target.value)}
-                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-base sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
                                 placeholder="contact@company.com"
                                 data-testid="input-email"
                               />
@@ -1160,7 +1179,7 @@ function PublicHome() {
                               <label className="mb-1 flex items-center justify-between text-xs font-medium text-[#9aa8b8]">
                                 <span>{t.formFields[3]}</span>
                                 <span className="text-[10px] text-[#79aef4] font-code uppercase tracking-wider">
-                                  {lang === 'ar' ? 'إجباري' : lang === 'fr' ? 'Requis' : 'Required'}
+                                   {lang === 'ar' ? 'إجباري' : lang === 'fr' ? 'Requis' : 'Required'}
                                 </span>
                               </label>
                               <input
@@ -1173,7 +1192,7 @@ function PublicHome() {
                                 }}
                                 className={`focus-ring w-full rounded-lg border ${
                                   phoneError ? 'border-[#e27373] bg-[#e27373]/10' : 'border-white/10 bg-white/[.03]'
-                                } px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]`}
+                                } px-3.5 py-2.5 text-base sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]`}
                                 placeholder="+213 5... / +33 6..."
                                 data-testid="input-phone"
                               />
@@ -1202,7 +1221,7 @@ function PublicHome() {
                                         isChecked ? prev.filter((s) => s !== service) : [...prev, service]
                                       );
                                     }}
-                                    className={`rounded-lg border px-2.5 py-1.5 sm:px-3 sm:py-2 text-[11px] sm:text-xs transition cursor-pointer ${
+                                    className={`rounded-lg border px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs transition cursor-pointer select-none shrink-0 active:scale-95 ${
                                       isChecked
                                         ? 'border-[#76a9ee] bg-[#31527b]/40 text-[#d8e8fc]'
                                         : 'border-white/10 bg-white/[.02] text-[#8695a7] hover:border-white/20'
@@ -1234,7 +1253,7 @@ function PublicHome() {
                                   ? 'Décrivez brièvement vos objectifs, délais ou défis digitaux actuels (optionnel)...'
                                   : 'Briefly describe your objectives, timeline, or current digital bottleneck (optional)...'
                               }
-                              className="focus-ring w-full resize-none rounded-lg border border-white/10 bg-white/[.03] p-2.5 sm:p-3 text-xs sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                              className="focus-ring w-full resize-none rounded-lg border border-white/10 bg-white/[.03] p-3 text-base sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
                               data-testid="input-project"
                             />
                           </div>
@@ -1320,8 +1339,9 @@ function PublicHome() {
                       className="w-fit text-xs text-[#8491a2] transition hover:text-[#25D366] flex items-center gap-2"
                       data-testid="link-footer-whatsapp-1"
                     >
-                      <MessageCircle size={13} className="text-[#25D366]" />
-                      +213 556 61 47 40 (WhatsApp)
+                      <MessageCircle size={13} className="text-[#25D366] shrink-0" />
+                      <span dir="ltr" className="inline-block font-mono text-[#cad7e6]">+213 556 61 47 40</span>
+                      <span className="text-[11px] text-[#6b7b8d]">(WhatsApp)</span>
                     </a>
                     <a
                       href="https://wa.me/213555247170"
@@ -1330,8 +1350,9 @@ function PublicHome() {
                       className="w-fit text-xs text-[#8491a2] transition hover:text-[#25D366] flex items-center gap-2"
                       data-testid="link-footer-whatsapp-2"
                     >
-                      <MessageCircle size={13} className="text-[#25D366]" />
-                      +213 555 24 71 70 (WhatsApp)
+                      <MessageCircle size={13} className="text-[#25D366] shrink-0" />
+                      <span dir="ltr" className="inline-block font-mono text-[#cad7e6]">+213 555 24 71 70</span>
+                      <span className="text-[11px] text-[#6b7b8d]">(WhatsApp)</span>
                     </a>
                   </div>
                 </div>
@@ -1350,7 +1371,15 @@ function PublicHome() {
               </div>
             </footer>
 
-            <button onClick={() => scrollTo('consultation')} className="fixed bottom-4 right-4 sm:bottom-6 sm:right-8 z-30 flex items-center gap-2 rounded-full border border-[#82afea]/40 bg-[#152338]/90 px-4 py-3 text-xs font-semibold text-[#dbeaff] shadow-2xl backdrop-blur-xl transition hover:-translate-y-1 hover:bg-[#203b60] active:scale-95 safe-bottom" data-testid="button-floating-cta"><CalendarDays size={15} /> {t.book}</button>
+            {showFloatingCta && (
+              <button
+                onClick={() => scrollTo('consultation')}
+                className="hidden md:flex fixed bottom-6 right-8 z-30 items-center gap-2 rounded-full border border-[#82afea]/40 bg-[#152338]/90 px-4 py-3 text-xs font-semibold text-[#dbeaff] shadow-2xl backdrop-blur-xl transition hover:-translate-y-1 hover:bg-[#203b60] active:scale-95"
+                data-testid="button-floating-cta"
+              >
+                <CalendarDays size={15} /> {t.book}
+              </button>
+            )}
             {exitOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Special invitation"><div className="glass relative max-w-md rounded-2xl p-7 sm:p-9"><button onClick={() => setExitOpen(false)} className="absolute right-4 top-4 text-[#8290a1]" aria-label="Close" data-testid="button-close-exit"><X size={18} /></button><span className="eyebrow">A considered next step</span><h2 className="mt-5 text-3xl font-semibold tracking-[-.05em] text-[#e7edf4]">Before you go — take the scorecard with you.</h2><p className="mt-4 text-sm leading-6 text-[#8997a8]">Book a private 30-minute conversation and we’ll map the highest-leverage opportunity in your current digital experience.</p><button onClick={() => { setExitOpen(false); scrollTo('consultation'); }} className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#e7edf4] py-3 text-sm font-bold text-[#080a0d]" data-testid="button-exit-cta">{t.book}<ArrowRight size={15} /></button></div></div>}
 
             {gateModalOpen && (

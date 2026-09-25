@@ -277,37 +277,32 @@ export function ProtectedVideoPlayer({
         <iframe
           src={driveEmbedUrl!}
           title={title}
-          className="h-full w-full border-0"
+          className="w-full h-[calc(100%+56px)] -mt-[56px] border-0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
           onLoad={() => setIsLoading(false)}
         />
 
-        {/* Top Header bar overlay */}
-        <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between p-2 sm:p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
-          <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
-            <span className="inline-flex items-center gap-1 rounded-full border border-[#79aef4]/30 bg-[#79aef4]/10 px-2 py-0.5 font-code text-[8px] sm:text-[10px] uppercase tracking-wider text-[#9ec5f7]">
-              <ShieldCheck size={10} className="text-[#79aef4]" />
-              {lang === 'ar' ? 'بث محمي' : lang === 'fr' ? 'FLUX PROTÉGÉ' : 'SECURE STREAM'}
-            </span>
-            <span className="font-code text-[9px] sm:text-xs text-[#cad5e2] tracking-wide truncate max-w-[130px] sm:max-w-md">
-              {title}
-            </span>
-          </div>
-
-          {onClose && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-              }}
-              className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-white/10 text-[#d0dbe7] hover:bg-white/20 hover:text-white transition cursor-pointer pointer-events-auto"
-              title="Close"
-            >
-              <X size={13} />
-            </button>
-          )}
+        {/* Discreet Security Badge in Corner */}
+        <div className="absolute top-2.5 sm:top-3 start-2.5 sm:start-3 z-20 flex items-center gap-1.5 pointer-events-none">
+          <span className="inline-flex items-center gap-1 rounded-full border border-[#79aef4]/30 bg-black/70 backdrop-blur-md px-2 py-0.5 font-code text-[8px] sm:text-[10px] uppercase tracking-wider text-[#9ec5f7] shadow-lg">
+            <ShieldCheck size={10} className="text-[#79aef4]" />
+            {lang === 'ar' ? 'بث محمي' : lang === 'fr' ? 'FLUX PROTÉGÉ' : 'SECURE STREAM'}
+          </span>
         </div>
+
+        {onClose && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            className="absolute top-2.5 end-2.5 z-20 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-black/70 backdrop-blur-md text-[#d0dbe7] hover:bg-black/90 hover:text-white transition cursor-pointer"
+            title="Close"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
     );
   }
