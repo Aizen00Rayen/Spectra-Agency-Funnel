@@ -84,9 +84,38 @@ const copy = {
     scheduleBody: 'A focused 30-minute conversation. No pitch deck, no pressure.',
     scheduleConfirm: 'Confirm this time',
     confirmed: 'You’re on the calendar.',
-    faqKicker: 'Clear answers',
-    faqTitle: 'Before we meet',
-    faqs: [['What does a first engagement look like?', 'We start with a focused discovery conversation and a short, paid strategy sprint when the problem needs more definition. You receive a clear opportunity map and a practical next step.'], ['What is the investment range?', 'Most product engagements begin between €18k and €65k, depending on scope and the depth of the system. We will always name the shape of the work before asking you to commit.'], ['How long does a project take?', 'A focused launch can take 6–10 weeks. Larger systems are staged into visible releases so your team sees progress early and often.'], ['Do you support what you build?', 'Yes. Every handover includes documentation and a clean path to ongoing care, optimisation and growth support.'], ['Who owns the final product?', 'You do. Your code, design files, content and accounts stay yours from day one.']],
+    faqKicker: 'Frequently Asked Questions',
+    faqTitle: 'Everything you need to know about working with Spectra.',
+    faqs: [
+      [
+        'Who is Spectra Agency, and who do you build for?',
+        'Spectra is an independent digital growth and engineering studio. We partner with ambitious businesses, modern e-commerce brands, academies, and service providers who want high-converting digital platforms built with precision, speed, and real commercial leverage.',
+      ],
+      [
+        'What exact digital solutions and systems do you deliver?',
+        'We build high-converting sales funnels, bespoke branded e-commerce platforms, custom web applications, and automated CRM & booking engines. Every build is tailored to turn visitor attention into qualified customers and measurable revenue.',
+      ],
+      [
+        'How does a project work from start to finish?',
+        'We begin with a focused discovery and commercial strategy call. Next, we craft tailored UI/UX architectures designed to maximize conversions, followed by robust technical engineering. Finally, we deliver a turnkey launch with comprehensive team training and documentation.',
+      ],
+      [
+        'How long does it typically take to deliver a project?',
+        'Focused conversion landing pages and funnels typically launch in 7 to 14 days. Full e-commerce platforms and comprehensive digital ecosystems take 3 to 4 weeks with visible milestone previews at every stage.',
+      ],
+      [
+        'How does pricing and payment work?',
+        'We offer transparent, fixed-price project quotes tailored to your scope—with zero hidden fees. We work with a deposit to secure your delivery window and the balance upon approved launch. We accept BaridiMob, CCP, direct bank transfer, and international payments.',
+      ],
+      [
+        'Do you provide ongoing support and training after launch?',
+        'Yes. Every launch includes a dedicated post-launch technical care period, direct priority WhatsApp support, and custom video walkthroughs showing your team exactly how to manage and scale your digital platform.',
+      ],
+      [
+        'How do I take the first step to get started?',
+        'You can book a 30-minute discovery call directly on our calendar above, or message our team directly on WhatsApp (+213 556 61 47 40 / +213 555 24 71 70) to discuss your project.',
+      ],
+    ],
     finalTitle: 'Your next chapter needs a better system.',
     finalCta: 'Book the free strategy session',
   },
@@ -118,8 +147,40 @@ const copy = {
     showcaseModalTitle: 'Consultation Requise',
     showcaseModalBody: 'Pour accéder à nos déploiements interactifs en direct et aux études de cas, veuillez d’abord remplir notre formulaire de consultation.',
     showcaseModalBtn: 'Remplir le formulaire',
-    scheduleKicker: 'Choisir la suite', scheduleTitle: 'Trouvez un créneau.', scheduleBody: 'Une conversation ciblée de 30 minutes. Sans pression.', scheduleConfirm: 'Confirmer ce créneau', confirmed: 'Vous êtes dans le calendrier.',
-    faqKicker: 'Réponses claires', faqTitle: 'Avant notre échange', faqs: [['À quoi ressemble une première mission ?', 'Nous commençons par un échange de découverte ciblé, puis un sprint stratégique rémunéré lorsque le problème mérite plus de définition.'], ['Quel est le budget ?', 'La plupart des missions commencent entre 18k et 65k €, selon le périmètre et la profondeur du système.'], ['Combien de temps faut-il ?', 'Un lancement ciblé prend 6 à 10 semaines. Les systèmes plus larges sont livrés par étapes visibles.'], ['Accompagnez-vous les produits ?', 'Oui. Chaque transfert inclut la documentation et un chemin clair pour le suivi et l’optimisation.'], ['À qui appartient le produit ?', 'À vous. Le code, les fichiers et les comptes restent les vôtres dès le premier jour.']], finalTitle: 'Votre prochain chapitre mérite un meilleur système.', finalCta: 'Réserver la session stratégique gratuite',
+    faqKicker: 'Questions fréquentes',
+    faqTitle: 'Tout ce que vous devez savoir avant de collaborer avec Spectra.',
+    faqs: [
+      [
+        'Qui est Spectra Agency, et à qui s’adressent vos services ?',
+        'Spectra est un studio indépendant de produits digitaux et de croissance. Nous accompagnons les entreprises ambitieuses, marques e-commerce, académies et prestataires de services qui recherchent des plateformes modernes, ultra-rapides et conçues pour générer du résultat commercial.',
+      ],
+      [
+        'Quels types de systèmes digitaux concevez-vous ?',
+        'Nous développons des funnels de vente à haute conversion, des boutiques e-commerce de marque sur-mesure, des applications web performantes et des systèmes d’automatisation CRM & réservation. Chaque produit est pensé pour convertir les visiteurs en clients qualifiés.',
+      ],
+      [
+        'Comment se déroule un projet, de l’idée au lancement ?',
+        'Nous commençons par un échange stratégique pour définir vos objectifs commerciaux. Nous concevons ensuite une expérience UI/UX axée sur la conversion, puis nous développons l’infrastructure technique. Le projet se termine par un lancement clé en main avec formation complète de vos équipes.',
+      ],
+      [
+        'Quel est le délai moyen de livraison d’un projet ?',
+        'Un funnel ou une page de vente stratégique est généralement livré sous 7 à 14 jours. Les plateformes e-commerce complètes et les systèmes personnalisés nécessitent 3 à 4 semaines, avec des points d’avancement réguliers.',
+      ],
+      [
+        'Comment fonctionnent la tarification et les modalités de paiement ?',
+        'Nous travaillons sur devis forfaitaire clair et transparent selon votre périmètre, sans mauvaise surprise. Le règlement s’effectue par acompte de démarrage puis solde à la livraison. Nous acceptons BaridiMob, CCP, virement bancaire et paiements internationaux.',
+      ],
+      [
+        'Assurez-vous un support et une formation après le lancement ?',
+        'Absolument. Chaque projet livré comprend une période de maintenance technique dédiée, un support prioritaire via WhatsApp et des tutoriels vidéo sur-mesure pour vous rendre totalement autonome dans la gestion de votre plateforme.',
+      ],
+      [
+        'Quelle est la première étape pour démarrer ?',
+        'Vous pouvez réserver un échange stratégique de 30 minutes sur notre calendrier ci-dessus, ou nous contacter directement sur WhatsApp (+213 556 61 47 40 / +213 555 24 71 70).',
+      ],
+    ],
+    finalTitle: 'Votre prochain chapitre mérite un meilleur système.',
+    finalCta: 'Réserver la session stratégique gratuite',
   },
   ar: {
     nav: ['الخدمات', 'المنهجية', 'أعمالنا', 'الأسئلة'],
@@ -151,7 +212,40 @@ const copy = {
     showcaseModalBody: 'للوصول إلى الأنظمة التفاعلية المباشرة ومشاريع عملائنا، يُرجى ملء استمارة الاستشارة أولاً.',
     showcaseModalBtn: 'الانتقال إلى استمارة الاستشارة',
     scheduleKicker: 'اختر خطوتك التالية', scheduleTitle: 'اعثر على الوقت المناسب.', scheduleBody: 'محادثة مركزة لمدة 30 دقيقة. بلا ضغط.', scheduleConfirm: 'تأكيد هذا الوقت', confirmed: 'تم حجزك في التقويم.',
-    faqKicker: 'إجابات واضحة', faqTitle: 'قبل أن نلتقي', faqs: [['كيف تبدأ المهمة الأولى؟', 'نبدأ بمحادثة اكتشاف مركزة، ثم sprint استراتيجي مدفوع عندما تحتاج المشكلة إلى تعريف أعمق.'], ['ما نطاق الاستثمار؟', 'تبدأ معظم المشاريع بين 18 ألفاً و65 ألف يورو، حسب النطاق وعمق النظام.'], ['كم يستغرق المشروع؟', 'يمكن أن يستغرق الإطلاق المركز من 6 إلى 10 أسابيع. الأنظمة الأكبر تطلق على مراحل مرئية.'], ['هل تدعمون ما تبنونه؟', 'نعم. كل تسليم يتضمن التوثيق وطريقاً واضحاً للرعاية والتحسين.'], ['من يملك المنتج النهائي؟', 'أنتم. الكود وملفات التصميم والحسابات ملككم منذ اليوم الأول.']], finalTitle: 'فصلك القادم يحتاج إلى نظام أفضل.', finalCta: 'احجز جلسة الاستراتيجية المجانية',
+    faqKicker: 'الأسئلة الشائعة',
+    faqTitle: 'كل ما تحتاج معرفته عن العمل وبناء شراكتك مع سبيكترا.',
+    faqs: [
+      [
+        'من هي Spectra Agency، ومن هم عملاؤكم المستهدفون؟',
+        'سبيكترا هي استوديو مستقل لتطوير المنتجات الرقمية وأنظمة النمو التجاري. نبني شراكات مع الشركات الطموحة، المتاجر الإلكترونية الحديثة، الأكاديميات، ومقدمي الخدمات الذين يريدون منصات رقمية عالية التحويل مصممة بدقة وسرعة وأثر تجاري ملموس.',
+      ],
+      [
+        'ما هي الحلول والأنظمة الرقمية التي تقومون بتطويرها؟',
+        'نقوم بتطوير مسارات بيع (Sales Funnels) عالية التحويل، متاجر إلكترونية احترافية مخصصة للعلامات التجارية، منصات ويب متكاملة، وأنظمة أتمتة لإدارة العملاء (CRM) والحجوزات. كل نظام مصمم لتحويل اهتمام الزوار إلى عملاء فعليين.',
+      ],
+      [
+        'كيف تسير مراحل العمل على المشروع من البداية حتى الإطلاق؟',
+        'نبدأ بجلسة استكشاف وتخطيط استراتيجي للنمو، ثم ننتقل إلى تصميم واجهات وتجربة مستخدم (UI/UX) تركز على رفع المبيعات، يليها البناء الهندسي والتطوير الفني الدقيق، ونختتم بإطلاق جاهز للعمل مع توثيق وتدريب كامل لفريقك.',
+      ],
+      [
+        'كم يستغرق تسليم المشروع عادة؟',
+        'مسارات البيع وصفحات الهبوط المركزة يتم إطلاقها عادة خلال 7 إلى 14 يوماً. أما المتاجر الإلكترونية المتكاملة والأنظمة المخصصة فتستغرق من 3 إلى 4 أسابيع مع معاينات ومتابعة مستمرة لكل مرحلة.',
+      ],
+      [
+        'كيف يتم احتساب التكلفة وما هي خيارات الدفع؟',
+        'نعتمد تسعيراً واضحاً ومحدداً للمشروع مسبقاً بناءً على نطاق العمل بدون أي تكاليف خفية. يتم الدفع عبر دفعة أولى لتأكيد الحجز وبدء التنفيذ، والباقي عند تسليم المشروع واعتماده. نقبل BaridiMob وCCP والتحويل البنكي وخيارات الدفع الدولية.',
+      ],
+      [
+        'هل تقدمون دعماً فنياً وتدريباً بعد إطلاق الموقع؟',
+        'نعم بالتأكيد. كل مشروع نسلمه يتضمن فترة دعم فني مخصصة بعد الإطلاق، تواصل مباشر وسريع عبر واتساب، وفيديوهات تدريبية مسجلة توضح لفريقك كيفية إدارة المنصة والطلبات بكل سهولة.',
+      ],
+      [
+        'كيف يمكنني اتخاذ الخطوة الأولى والبدء معكم؟',
+        'يمكنك حجز جلسة استكشافية مدتها 30 دقيقة عبر التقويم التفاعلي في الأعلى، أو مراسلتنا مباشرة عبر واتساب (+213 556 61 47 40 / +213 555 24 71 70) لمناقشة أهداف مشروعك.',
+      ],
+    ],
+    finalTitle: 'فصلك القادم يحتاج إلى نظام أفضل.',
+    finalCta: 'احجز جلسة الاستراتيجية المجانية',
   },
 } as const;
 
