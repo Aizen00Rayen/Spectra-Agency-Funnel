@@ -16,7 +16,7 @@ import { setAuthTokenGetter, useGetPublicConfig } from '@workspace/api-client-re
 import { apiUrl } from '@/lib/api';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, Calendar, CalendarDays, Check, ChevronDown,
-  Clock3, ExternalLink, Globe2, Lock, Menu, MessageSquareQuote, Play, RefreshCw, ShieldCheck, Sparkles, User, Video, Volume2, VolumeX, X, Zap,
+  Clock3, ExternalLink, Globe2, Lock, Mail, Menu, MessageCircle, MessageSquareQuote, Play, RefreshCw, ShieldCheck, Sparkles, User, Video, Volume2, VolumeX, X, Zap,
 } from 'lucide-react';
 
 const queryClient = new QueryClient();
@@ -57,11 +57,15 @@ const copy = {
     workKicker: 'Selected work',
     workTitle: 'Built for the moment after launch.',
     workBody: 'A glimpse into the kinds of digital leverage we create with ambitious teams.',
-    work: [['Astra Health', 'Patient access, redesigned', 'Healthcare / Web platform', '47%', 'more completed bookings'], ['Nadir Finance', 'Clarity for complex capital', 'Fintech / Product system', '2.8×', 'qualified lead velocity'], ['Northline', 'A new operating rhythm', 'Logistics / Automation', '31h', 'returned each week']],
+    work: [
+      ['The Results Academy', 'Interactive curriculum & digital learning platform', 'E-Learning / Web platform', '10k+', 'active learners enrolled'],
+      ['The Bequer', 'High-converting luxury cosmetic digital experience', 'Cosmetics & Tech / E-commerce', '3.4×', 'checkout conversion'],
+      ['FYN Beauty', 'Boutique beauty showcase & custom sales funnel', 'Cosmetics Store / Web system', '100%', 'custom visual architecture'],
+    ],
     proofKicker: 'What it feels like to work with us',
     proofTitle: 'Calm, clear, commercially useful.',
-    quote: 'Spectra did not just give us a beautiful product. They gave our team a new level of confidence in how we show up to the market.',
-    quoteBy: 'Maya Laurent — Founder, Nadir Finance',
+    quote: 'Spectra engineered not just a digital system, but a scalable commercial engine that elevated our brand and client trust from day one.',
+    quoteBy: 'Founding Partner — The Results Academy',
     formKicker: 'Make the next move',
     formTitle: 'Let’s discuss what you’re building.',
     formBody: 'Tell us enough to start a useful conversation. We reply within one business day.',
@@ -101,8 +105,12 @@ const copy = {
     capabilities: [['01', 'Produits digitaux', 'Sites, portails et applications qui rendent les sujets difficiles évidents.'], ['02', 'Systèmes intelligents', 'CRM, ERP et automatisation IA pour rendre du temps à vos équipes.'], ['03', 'Systèmes de croissance', 'Marque, UX et acquisition pensés autour de résultats mesurables.'], ['04', 'Direction technique', 'Architecture, sécurité et vision produit pour évoluer sereinement.']],
     resultsKicker: 'Une différence mesurable', resultsTitle: 'Le bon goût compte lorsqu’il performe.', results: [['150+', 'produits livrés'], ['98%', 'satisfaction client'], ['3,1×', 'croissance moyenne des leads'], ['24/7', 'présents quand cela compte']],
     methodKicker: 'La méthode Spectra', methodTitle: 'Moins de réunions. De meilleures décisions.', methodBody: 'Un processus volontairement senior qui garde l’élan visible à chaque étape.', steps: [['01', 'Découvrir', 'Comprendre la vérité commerciale avant de toucher à un pixel.'], ['02', 'Structurer', 'Transformer cette vérité en thèse produit et croissance.'], ['03', 'Designer', 'Faire mériter sa place à chaque interaction.'], ['04', 'Construire', 'Développer un système rapide, robuste, prêt pour le réel.'], ['05', 'Accélérer', 'Mesurer le mouvement et rendre le suivant plus précis.']],
-    workKicker: 'Projets choisis', workTitle: 'Pensés pour le moment après le lancement.', workBody: 'Un aperçu du levier digital que nous créons avec des équipes ambitieuses.', work: [['Astra Health', 'Réinventer l’accès patient', 'Santé / Plateforme web', '47%', 'de réservations finalisées en plus'], ['Nadir Finance', 'La clarté pour un capital complexe', 'Fintech / Système produit', '2,8×', 'de vélocité de leads qualifiés'], ['Northline', 'Un nouveau rythme opérationnel', 'Logistique / Automatisation', '31h', 'récupérées chaque semaine']],
-    proofKicker: 'Travailler avec nous', proofTitle: 'Calme, clair, utile au business.', quote: 'Spectra ne nous a pas seulement livré un produit magnifique. Ils ont donné à notre équipe une nouvelle confiance pour entrer sur le marché.', quoteBy: 'Maya Laurent — Fondatrice, Nadir Finance',
+    work: [
+      ['The Results Academy', 'Portail de formation moderne & architecture pédagogique', 'E-Learning / Plateforme web', '10k+', 'apprenants actifs'],
+      ['The Bequer', 'Expérience e-commerce cosmétique haut de gamme', 'Cosmétique & Tech / E-commerce', '3,4×', 'taux de conversion'],
+      ['FYN Beauty', 'Boutique beauté sur-mesure & funnel de vente optimisé', 'Boutique Cosmétique / Système web', '100%', 'design & architecture sur-mesure'],
+    ],
+    proofKicker: 'Travailler avec nous', proofTitle: 'Calme, clair, utile au business.', quote: 'Spectra n’a pas seulement développé un système digital, mais un véritable moteur commercial qui a transformé la confiance de nos clients.', quoteBy: 'Partenaire Fondateur — The Results Academy',
     formKicker: 'Faire le prochain pas', formTitle: 'Parlons de ce que vous construisez.', formBody: 'Dites-nous assez pour commencer une conversation utile. Réponse sous un jour ouvré.', formFields: ['Votre nom', 'Entreprise', 'Email professionnel', 'Numéro de téléphone *', 'Que souhaitez-vous construire ?'], formButton: 'Demander ma consultation', formSuccess: 'Votre message est bien arrivé. Nous revenons vers vous sous un jour ouvré.', services: ['Site web', 'Application mobile', 'CRM / ERP', 'Automatisation', 'Système IA', 'Marque / croissance'],
     showcaseKicker: 'Déploiements Récents',
     showcaseTitle: 'Sites et plateformes conçus par Spectra.',
@@ -128,8 +136,13 @@ const copy = {
     capabilities: [['01', 'منتجات رقمية', 'مواقع وتطبيقات تجعل أصعب الأجزاء واضحة.'], ['02', 'أنظمة ذكية', 'CRM وERP وأتمتة ذكاء اصطناعي تعيد الوقت لفريقك.'], ['03', 'أنظمة النمو', 'علامة وتجربة مستخدم واستراتيجية طلب مبنية على حركة قابلة للقياس.'], ['04', 'توجيه تقني', 'هندسة وأمان وتفكير منتج للتوسع بثقة.']],
     resultsKicker: 'فرق يمكن قياسه', resultsTitle: 'الذوق الرفيع مفيد عندما يحقق نتائج.', results: [['150+', 'منتجاً أطلقناه'], ['98%', 'رضا العملاء'], ['3.1×', 'متوسط نمو العملاء المحتملين'], ['24/7', 'دعم عندما يهم الأمر']],
     methodKicker: 'منهجية Spectra', methodTitle: 'اجتماعات أقل. قرارات أفضل.', methodBody: 'عملية صغيرة وذات خبرة تحافظ على وضوح التقدم في كل مرحلة.', steps: [['01', 'اكتشاف', 'نصل إلى الحقيقة التجارية قبل لمس أي بكسل.'], ['02', 'تشكيل', 'نحول الحقيقة إلى رؤية واضحة للمنتج والنمو.'], ['03', 'تصميم', 'نجعل كل تفاعل يستحق مكانه.'], ['04', 'بناء', 'نهندس نظاماً سريعاً ومرناً للمستخدمين الحقيقيين.'], ['05', 'نمو', 'نقيس ما تحرك ونجعل الخطوة التالية أدق.']],
-    workKicker: 'أعمال مختارة', workTitle: 'مصممة للحظة ما بعد الإطلاق.', workBody: 'لمحة عن النفوذ الرقمي الذي نصنعه مع الفرق الطموحة.', work: [['Astra Health', 'إعادة تصميم وصول المرضى', 'الصحة / منصة ويب', '47%', 'زيادة في الحجوزات المكتملة'], ['Nadir Finance', 'وضوح لرأس مال معقد', 'تقنية مالية / نظام منتج', '2.8×', 'سرعة العملاء المحتملين'], ['Northline', 'إيقاع تشغيلي جديد', 'لوجستيات / أتمتة', '31h', 'موفرة كل أسبوع']],
-    proofKicker: 'كيف يبدو العمل معنا', proofTitle: 'هادئ، واضح، مفيد تجارياً.', quote: 'لم تمنحنا Spectra منتجاً جميلاً فحسب، بل منحت فريقنا ثقة جديدة في طريقة ظهورنا أمام السوق.', quoteBy: 'مايا لوران — مؤسسة Nadir Finance',
+    workKicker: 'أعمال مختارة', workTitle: 'مصممة للحظة ما بعد الإطلاق.', workBody: 'لمحة عن النفوذ الرقمي الذي نصنعه مع الفرق الطموحة.',
+    work: [
+      ['The Results Academy', 'منصة تعليمية متطورة وهندسة مناهج تفاعلية', 'تعليم إلكتروني / منصة ويب', '10k+', 'طالب ومستخدم نشط'],
+      ['The Bequer', 'متجر فاخر لمستحضرات التجميل وتجربة رقمية فريدة', 'مستحضرات وتكنولوجيا / تجارة إلكترونية', '3.4×', 'معدل إتمام الطلبات'],
+      ['FYN Beauty', 'واجهة متجر جمال مخصص ومسار تحويل عالي الأداء', 'متجر تجميل / نظام ويب', '100%', 'إتقان رقمي مخصص'],
+    ],
+    proofKicker: 'كيف يبدو العمل معنا', proofTitle: 'هادئ، واضح، مفيد تجارياً.', quote: 'لم تمنحنا Spectra منتجاً جميلاً فحسب، بل طورت محركاً تجارياً حقيقياً عزز ثقة عملائنا وعلامتنا التجارية من اليوم الأول.', quoteBy: 'الشريك المؤسس — The Results Academy',
     formKicker: 'اتخذ الخطوة التالية', formTitle: 'لنتحدث عن الشيء الذي تبنيه.', formBody: 'أخبرنا بما يكفي لبدء محادثة مفيدة. نرد خلال يوم عمل واحد.', formFields: ['اسمك', 'الشركة', 'البريد الإلكتروني للعمل', 'رقم الهاتف *', 'ماذا تريد أن تبني؟'], formButton: 'اطلب استشارتي', formSuccess: 'وصلت رسالتك إلى الفريق. سنتواصل معك خلال يوم عمل.', services: ['موقع إلكتروني', 'تطبيق جوال', 'CRM / ERP', 'أتمتة', 'نظام ذكاء اصطناعي', 'علامة / نمو'],
     showcaseKicker: 'أعمالنا ومنصاتنا',
     showcaseTitle: 'مواقع وأنظمة رقمية تم بناؤها بواسطة Spectra.',
@@ -280,20 +293,6 @@ function PublicHome() {
               url: 'https://fynbeauty.shop/',
               category: 'Cosmetics Store',
               description: 'High-converting boutique beauty showcase and checkout flow.',
-            },
-            {
-              id: 4,
-              title: 'Astra Health Platform',
-              url: 'https://astrahealth.io',
-              category: 'Healthcare Platform',
-              description: 'Patient access infrastructure, HIPAA-compliant flows and booking system.',
-            },
-            {
-              id: 5,
-              title: 'Nadir Finance Architecture',
-              url: 'https://nadir.finance',
-              category: 'Fintech Platform',
-              description: 'Enterprise treasury interface and complex capital liquidity engine.',
             },
           ];
 
@@ -1055,10 +1054,80 @@ function PublicHome() {
 
               <section id="faq" className="scroll-mt-20 mx-auto max-w-[1000px] px-5 py-20 sm:px-8 lg:py-36"><div className="text-center"><span className="eyebrow">{t.faqKicker}</span><h2 className="mt-5 text-3xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-5xl lg:text-6xl">{t.faqTitle}</h2></div><div className="mt-12 sm:mt-14 border-t border-white/10">{t.faqs.map(([question, answer], i) => <div key={question} className="border-b border-white/10"><button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="flex w-full items-center justify-between gap-5 py-5 sm:py-6 text-start text-sm sm:text-base text-[#d9e1eb]" aria-expanded={openFaq === i} data-testid={`button-faq-${i}`}><span>{question}</span><ChevronDown size={18} className={`shrink-0 text-[#7c9ec7] transition-transform ${openFaq === i ? 'rotate-180' : ''}`} /></button>{openFaq === i && <p className="max-w-2xl pb-6 sm:pb-7 text-xs sm:text-sm leading-6 sm:leading-7 text-[#8491a2]">{answer}</p>}</div>)}</div></section>
 
-              <section className="relative overflow-hidden border-t border-white/[.07] bg-[#0b0f14]"><div className="absolute inset-0 grid-fade opacity-50" /><div className="relative mx-auto flex max-w-[1320px] flex-col justify-between gap-8 px-5 py-20 sm:px-8 lg:flex-row lg:items-end lg:px-12 lg:py-32"><div><span className="eyebrow">SPECTRA / 2025</span><h2 className="mt-4 max-w-3xl text-4xl font-semibold leading-[.98] tracking-[-.07em] text-[#e7edf4] sm:text-6xl lg:text-7xl">{t.finalTitle}</h2></div><button onClick={() => scrollTo('consultation')} className="group flex w-full sm:w-fit min-h-[48px] items-center justify-center gap-3 rounded-full bg-[#e7edf4] px-7 py-3.5 text-sm font-bold text-[#080a0d] transition hover:bg-[#a9cbfb] active:scale-[0.98]" data-testid="button-final-cta">{t.finalCta}<ArrowRight size={16} className="transition-transform group-hover:translate-x-1" /></button></div></section>
+              <section className="relative overflow-hidden border-t border-white/[.07] bg-[#0b0f14]"><div className="absolute inset-0 grid-fade opacity-50" /><div className="relative mx-auto flex max-w-[1320px] flex-col justify-between gap-8 px-5 py-20 sm:px-8 lg:flex-row lg:items-end lg:px-12 lg:py-32"><div><span className="eyebrow">SPECTRA / 2026</span><h2 className="mt-4 max-w-3xl text-4xl font-semibold leading-[.98] tracking-[-.07em] text-[#e7edf4] sm:text-6xl lg:text-7xl">{t.finalTitle}</h2></div><button onClick={() => scrollTo('consultation')} className="group flex w-full sm:w-fit min-h-[48px] items-center justify-center gap-3 rounded-full bg-[#e7edf4] px-7 py-3.5 text-sm font-bold text-[#080a0d] transition hover:bg-[#a9cbfb] active:scale-[0.98]" data-testid="button-final-cta">{t.finalCta}<ArrowRight size={16} className="transition-transform group-hover:translate-x-1" /></button></div></section>
             </main>
 
-            <footer className="border-t border-white/[.07]"><div className="mx-auto grid max-w-[1320px] gap-10 px-5 py-12 sm:px-8 lg:grid-cols-[1.3fr_1fr_1fr_1fr] lg:px-12"><div><div className="flex items-center gap-3"><span className="flex h-9 w-9 overflow-hidden rounded-full border border-white/20"><img src="/assets/spectra-logo.jpeg" alt="Spectra" className="h-full w-full object-cover" /></span><span className="font-code text-xs tracking-[.28em] text-[#e7ebf0]">SPECTRA</span></div><p className="mt-5 max-w-xs text-xs leading-6 text-[#718091]">Digital products and systems for businesses with somewhere serious to go.</p></div><FooterCol title={lang === 'ar' ? 'استكشف' : lang === 'fr' ? 'Explorer' : 'Explore'} items={t.nav} onSelect={(i) => scrollTo(['capabilities','method','work','faq'][i])} /><FooterCol title={lang === 'ar' ? 'تواصل' : lang === 'fr' ? 'Contact' : 'Contact'} items={['hello@spectra.agency', lang === 'ar' ? 'تلمسان، الجزائر / عن بعد' : lang === 'fr' ? 'Tlemcen, Algérie / À distance' : 'Tlemcen, Algeria / Remote', 'LinkedIn', 'Instagram']} onSelect={() => {}} /><div><span className="eyebrow">STATUS</span><p className="mt-4 flex items-center gap-2 text-xs text-[#98a7b8]"><span className="h-1.5 w-1.5 rounded-full bg-[#7ab0fa]" /> {t.status}</p></div></div><div className="mx-auto flex max-w-[1320px] flex-col justify-between gap-3 border-t border-white/10 px-5 py-6 text-[10px] text-[#5e6b7c] sm:flex-row sm:px-8 lg:px-12"><span>© 2025 Spectra Agency. All rights reserved.</span><span>Privacy / Terms / Built with intent</span></div></footer>
+            <footer className="border-t border-white/[.07]">
+              <div className="mx-auto grid max-w-[1320px] gap-10 px-5 py-12 sm:px-8 lg:grid-cols-[1.3fr_1fr_1.3fr_1fr] lg:px-12">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 overflow-hidden rounded-full border border-white/20">
+                      <img src="/assets/spectra-logo.jpeg" alt="Spectra" className="h-full w-full object-cover" />
+                    </span>
+                    <span className="font-code text-xs tracking-[.28em] text-[#e7ebf0]">SPECTRA</span>
+                  </div>
+                  <p className="mt-5 max-w-xs text-xs leading-6 text-[#718091]">
+                    {lang === 'ar'
+                      ? 'منتجات وأنظمة رقمية استراتيجية للشركات التي تبحث عن أثر حقيقي ونمو مدروس.'
+                      : lang === 'fr'
+                      ? 'Produits et systèmes digitaux stratégiques pour les entreprises prêtes à accélérer.'
+                      : 'Digital products and systems for businesses with somewhere serious to go.'}
+                  </p>
+                </div>
+
+                <FooterCol
+                  title={lang === 'ar' ? 'استكشف' : lang === 'fr' ? 'Explorer' : 'Explore'}
+                  items={t.nav}
+                  onSelect={(i) => scrollTo(['capabilities', 'method', 'showcase', 'faq'][i])}
+                />
+
+                <div>
+                  <span className="eyebrow">{lang === 'ar' ? 'تواصل معنا' : lang === 'fr' ? 'Contact & WhatsApp' : 'Contact & WhatsApp'}</span>
+                  <div className="mt-4 flex flex-col gap-3">
+                    <a
+                      href="mailto:spectra26agency@gmail.com"
+                      className="w-fit text-xs text-[#8491a2] transition hover:text-[#dce7f4] flex items-center gap-2"
+                      data-testid="link-footer-email"
+                    >
+                      <Mail size={13} className="text-[#7ab0fa]" />
+                      spectra26agency@gmail.com
+                    </a>
+                    <a
+                      href="https://wa.me/213556614740"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-fit text-xs text-[#8491a2] transition hover:text-[#25D366] flex items-center gap-2"
+                      data-testid="link-footer-whatsapp-1"
+                    >
+                      <MessageCircle size={13} className="text-[#25D366]" />
+                      +213 556 61 47 40 (WhatsApp)
+                    </a>
+                    <a
+                      href="https://wa.me/213555247170"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-fit text-xs text-[#8491a2] transition hover:text-[#25D366] flex items-center gap-2"
+                      data-testid="link-footer-whatsapp-2"
+                    >
+                      <MessageCircle size={13} className="text-[#25D366]" />
+                      +213 555 24 71 70 (WhatsApp)
+                    </a>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="eyebrow">STATUS</span>
+                  <p className="mt-4 flex items-center gap-2 text-xs text-[#98a7b8]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#7ab0fa]" /> {t.status}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mx-auto flex max-w-[1320px] flex-col justify-between gap-3 border-t border-white/10 px-5 py-6 text-[10px] text-[#5e6b7c] sm:flex-row sm:px-8 lg:px-12">
+                <span>© 2026 Spectra Agency. All rights reserved.</span>
+                <span>Privacy / Terms / Built with intent</span>
+              </div>
+            </footer>
 
             <button onClick={() => scrollTo('consultation')} className="fixed bottom-4 right-4 sm:bottom-6 sm:right-8 z-30 flex items-center gap-2 rounded-full border border-[#82afea]/40 bg-[#152338]/90 px-4 py-3 text-xs font-semibold text-[#dbeaff] shadow-2xl backdrop-blur-xl transition hover:-translate-y-1 hover:bg-[#203b60] active:scale-95 safe-bottom" data-testid="button-floating-cta"><CalendarDays size={15} /> {t.book}</button>
             {exitOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Special invitation"><div className="glass relative max-w-md rounded-2xl p-7 sm:p-9"><button onClick={() => setExitOpen(false)} className="absolute right-4 top-4 text-[#8290a1]" aria-label="Close" data-testid="button-close-exit"><X size={18} /></button><span className="eyebrow">A considered next step</span><h2 className="mt-5 text-3xl font-semibold tracking-[-.05em] text-[#e7edf4]">Before you go — take the scorecard with you.</h2><p className="mt-4 text-sm leading-6 text-[#8997a8]">Book a private 30-minute conversation and we’ll map the highest-leverage opportunity in your current digital experience.</p><button onClick={() => { setExitOpen(false); scrollTo('consultation'); }} className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-[#e7edf4] py-3 text-sm font-bold text-[#080a0d]" data-testid="button-exit-cta">{t.book}<ArrowRight size={15} /></button></div></div>}

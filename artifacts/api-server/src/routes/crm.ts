@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ilike, ne, or } from "drizzle-orm";
 import {
   ApproveBookingParams,
   ApproveBookingResponse,
@@ -245,7 +245,54 @@ router.post("/leads", leadSubmissionLimiter, async (req, res) => {
   }
 });
 
+async function ensurePortfolioInitialized() {
+  try {
+    // Delete any test rows containing Astra or Nadir if any were inserted
+    await db.delete(portfolioWebsitesTable).where(
+      or(
+        ilike(portfolioWebsitesTable.title, "%astra%"),
+        ilike(portfolioWebsitesTable.title, "%nadir%"),
+        ilike(portfolioWebsitesTable.url, "%astra%"),
+        ilike(portfolioWebsitesTable.url, "%nadir%")
+      )
+    );
+
+    const existing = await db.select({ id: portfolioWebsitesTable.id }).from(portfolioWebsitesTable);
+    if (existing.length === 0) {
+      await db.insert(portfolioWebsitesTable).values([
+        {
+          title: "The Results Academy",
+          url: "https://theresults-academy.com/",
+          category: "E-Learning Platform",
+          description: "Interactive modern educational portal and digital curriculum system.",
+          displayOrder: 1,
+          isPublished: true,
+        },
+        {
+          title: "The Bequer",
+          url: "https://thebequer.tech/",
+          category: "Cosmetics & Tech",
+          description: "Luxury e-commerce and branded cosmetic retail experience.",
+          displayOrder: 2,
+          isPublished: true,
+        },
+        {
+          title: "FYN Beauty",
+          url: "https://fynbeauty.shop/",
+          category: "Cosmetics Store",
+          description: "High-converting boutique beauty showcase and checkout flow.",
+          displayOrder: 3,
+          isPublished: true,
+        },
+      ]);
+    }
+  } catch (err) {
+    console.error("Error ensuring portfolio initialized:", err);
+  }
+}
+
 router.get("/public/portfolio", async (_req, res) => {
+  await ensurePortfolioInitialized();
   const items = await db
     .select()
     .from(portfolioWebsitesTable)
@@ -449,6 +496,7 @@ router.delete("/admin/testimonials/:id", async (req, res) => {
 });
 
 router.get("/admin/portfolio", async (_req, res) => {
+  await ensurePortfolioInitialized();
   const items = await db
     .select()
     .from(portfolioWebsitesTable)
