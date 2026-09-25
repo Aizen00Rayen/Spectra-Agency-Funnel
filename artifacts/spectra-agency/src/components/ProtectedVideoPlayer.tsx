@@ -284,13 +284,13 @@ export function ProtectedVideoPlayer({
         />
 
         {/* Top Header bar overlay */}
-        <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between p-3 sm:p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
-          <div className="flex items-center gap-2 pointer-events-auto">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#79aef4]/30 bg-[#79aef4]/10 px-2.5 py-0.5 font-code text-[9px] sm:text-[10px] uppercase tracking-wider text-[#9ec5f7]">
-              <ShieldCheck size={11} className="text-[#79aef4]" />
+        <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between p-2 sm:p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
+          <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
+            <span className="inline-flex items-center gap-1 rounded-full border border-[#79aef4]/30 bg-[#79aef4]/10 px-2 py-0.5 font-code text-[8px] sm:text-[10px] uppercase tracking-wider text-[#9ec5f7]">
+              <ShieldCheck size={10} className="text-[#79aef4]" />
               {lang === 'ar' ? 'بث محمي' : lang === 'fr' ? 'FLUX PROTÉGÉ' : 'SECURE STREAM'}
             </span>
-            <span className="font-code text-[10px] sm:text-xs text-[#cad5e2] tracking-wide truncate max-w-[200px] sm:max-w-md">
+            <span className="font-code text-[9px] sm:text-xs text-[#cad5e2] tracking-wide truncate max-w-[130px] sm:max-w-md">
               {title}
             </span>
           </div>
@@ -301,10 +301,10 @@ export function ProtectedVideoPlayer({
                 e.stopPropagation();
                 onClose();
               }}
-              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-white/10 text-[#d0dbe7] hover:bg-white/20 hover:text-white transition cursor-pointer pointer-events-auto"
+              className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-white/10 text-[#d0dbe7] hover:bg-white/20 hover:text-white transition cursor-pointer pointer-events-auto"
               title="Close"
             >
-              <X size={15} />
+              <X size={13} />
             </button>
           )}
         </div>
@@ -510,7 +510,7 @@ export function ProtectedVideoPlayer({
                 step="0.05"
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="w-14 sm:w-18 accent-[#79aef4] h-1 bg-white/20 rounded cursor-pointer opacity-80 hover:opacity-100 transition"
+                className="hidden md:block w-14 sm:w-18 accent-[#79aef4] h-1 bg-white/20 rounded cursor-pointer opacity-80 hover:opacity-100 transition"
               />
             </div>
 

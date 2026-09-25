@@ -250,7 +250,20 @@ const copy = {
 } as const;
 
 function PublicHome() {
-  const [lang, setLang] = useState<Lang>('en');
+  const [lang, setLang] = useState<Lang>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('spectra_lang') as Lang | null;
+      if (saved === 'ar' || saved === 'en' || saved === 'fr') return saved;
+    }
+    return 'ar';
+  });
+
+  const handleSetLang = (newLang: Lang) => {
+    setLang(newLang);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('spectra_lang', newLang);
+    }
+  };
   const [menuOpen, setMenuOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -591,12 +604,23 @@ function PublicHome() {
                 <nav className="hidden items-center gap-8 lg:flex" aria-label="Main navigation">
                   {t.nav.map((item, index) => <button key={item} onClick={() => scrollTo(['capabilities','method','work','faq'][index])} className="focus-ring text-[12px] text-[#8e9aaa] transition-colors hover:text-white" data-testid={`link-nav-${index}`}>{item}</button>)}
                 </nav>
-                <div className="flex items-center gap-2.5 sm:gap-3">
-                  <div className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/[.03] p-1 sm:flex" aria-label="Language selector">
-                    {(['en','fr','ar'] as Lang[]).map((item) => <button key={item} onClick={() => setLang(item)} className={`focus-ring rounded-full px-2.5 py-1 font-code text-[10px] uppercase transition ${lang === item ? 'bg-white text-[#080a0d]' : 'text-[#8290a2] hover:text-white'}`} data-testid={`button-language-${item}`}>{item}</button>)}
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[.04] p-0.5 sm:p-1" aria-label="Language selector">
+                    {(['ar','fr','en'] as Lang[]).map((item) => (
+                      <button
+                        key={item}
+                        onClick={() => handleSetLang(item)}
+                        className={`focus-ring rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 font-code text-[10px] uppercase transition cursor-pointer ${
+                          lang === item ? 'bg-white text-[#080a0d] font-semibold' : 'text-[#8290a2] hover:text-white'
+                        }`}
+                        data-testid={`button-language-${item}`}
+                      >
+                        {item}
+                      </button>
+                    ))}
                   </div>
                   <button onClick={() => scrollTo('consultation')} className="hidden rounded-full bg-[#e7ebf0] px-4 py-2.5 text-[11px] font-bold text-[#080a0d] transition hover:bg-[#9fc5ff] sm:block" data-testid="button-header-cta">{t.book}</button>
-                  <button onClick={() => setMenuOpen(!menuOpen)} className="focus-ring flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-[#d6dde8] lg:hidden" aria-label={menuOpen ? 'Close menu' : 'Open menu'} data-testid="button-mobile-menu">{menuOpen ? <X size={18} /> : <Menu size={18} />}</button>
+                  <button onClick={() => setMenuOpen(!menuOpen)} className="focus-ring flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-white/15 text-[#d6dde8] lg:hidden" aria-label={menuOpen ? 'Close menu' : 'Open menu'} data-testid="button-mobile-menu">{menuOpen ? <X size={17} /> : <Menu size={17} />}</button>
                 </div>
               </div>
               {menuOpen && (
@@ -618,10 +642,10 @@ function PublicHome() {
                     <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-4">
                       <span className="font-code text-[10px] uppercase tracking-wider text-[#738294]">Language</span>
                       <div className="flex items-center gap-2">
-                        {(['en','fr','ar'] as Lang[]).map(item => (
+                        {(['ar','fr','en'] as Lang[]).map(item => (
                           <button
                             key={item}
-                            onClick={() => setLang(item)}
+                            onClick={() => handleSetLang(item)}
                             className={`rounded-full border px-3.5 py-1.5 font-code text-[11px] uppercase transition ${lang === item ? 'border-white bg-white font-semibold text-black' : 'border-white/15 text-[#9ba8b7] hover:border-white/30'}`}
                             data-testid={`button-mobile-language-${item}`}
                           >
@@ -654,7 +678,7 @@ function PublicHome() {
             </header>
 
             <main id="top">
-              <section id="lesson" className="relative flex min-h-[auto] lg:min-h-[860px] flex-col items-center overflow-hidden border-b border-white/[.07] pt-24 pb-16 sm:pt-28 sm:pb-20 lg:pt-36 lg:pb-28">
+              <section id="lesson" className="relative flex min-h-[auto] lg:min-h-[860px] flex-col items-center overflow-hidden border-b border-white/[.07] pt-20 sm:pt-28 lg:pt-36 pb-12 sm:pb-20 lg:pb-28">
                 <div className="grid-fade absolute inset-0 opacity-60" />
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                   <div className="absolute left-[15%] top-[18%] h-px w-[70%] bg-gradient-to-r from-transparent via-[#6689b6]/40 to-transparent" style={{ animation: 'pulse-line 4s ease-in-out infinite' }} />
@@ -666,24 +690,24 @@ function PublicHome() {
                   <div className="absolute top-[10%] left-1/2 -translate-x-1/2 h-80 w-[720px] rounded-full bg-[#29568f]/15 blur-[120px]" />
                 </div>
 
-                <div className="relative z-10 mx-auto flex w-full max-w-[1320px] flex-col items-center px-4 sm:px-8 lg:px-12 text-center">
-                  <div className="reveal mb-5 sm:mb-6 inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[.03] px-3.5 sm:px-4 py-1.5 backdrop-blur-md">
+                <div className="relative z-10 mx-auto flex w-full max-w-[1320px] flex-col items-center px-3.5 sm:px-8 lg:px-12 text-center">
+                  <div className="reveal mb-3.5 sm:mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.03] px-3 sm:px-4 py-1 sm:py-1.5 backdrop-blur-md">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#79aef4] shadow-[0_0_12px_2px_rgba(121,174,244,.7)] animate-pulse" />
-                    <span className="eyebrow text-[10px] sm:text-xs">{t.lessonKicker}</span>
+                    <span className="eyebrow text-[9px] sm:text-xs">{t.lessonKicker}</span>
                   </div>
 
-                  <h1 className="reveal delay-1 max-w-4xl text-center text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-semibold leading-[1.08] sm:leading-[1.03] tracking-[-.05em] text-[#e8edf3] break-words">
+                  <h1 className="reveal delay-1 max-w-4xl text-center text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-semibold leading-tight sm:leading-[1.06] ltr:tracking-[-.04em] rtl:tracking-normal text-[#e8edf3] break-words">
                     {t.lessonTitle}
                   </h1>
 
-                  <p className="reveal delay-2 mt-5 sm:mt-6 max-w-2xl text-center text-sm leading-6 text-[#98a6b6] sm:text-lg sm:leading-7">
+                  <p className="reveal delay-2 mt-3 sm:mt-6 max-w-2xl text-center text-xs sm:text-base md:text-lg leading-relaxed sm:leading-7 text-[#98a6b6]">
                     {t.lessonBody}
                   </p>
 
                   {/* Free Video Lesson Player */}
-                  <div className="reveal delay-3 relative mt-8 sm:mt-10 w-full max-w-4xl">
-                    <div className="absolute -inset-2 sm:-inset-3.5 rounded-[22px] sm:rounded-[32px] border border-[#6c95c3]/25 bg-gradient-to-b from-[#6c95c3]/15 to-transparent blur-[1px]" />
-                    <div className="relative aspect-video overflow-hidden rounded-xl sm:rounded-2xl border border-white/15 bg-[#11161d] shadow-[0_25px_80px_rgba(0,0,0,.75)]">
+                  <div className="reveal delay-3 relative mt-6 sm:mt-10 w-full max-w-4xl">
+                    <div className="absolute -inset-1 sm:-inset-3 rounded-2xl sm:rounded-[32px] border border-[#6c95c3]/25 bg-gradient-to-b from-[#6c95c3]/15 to-transparent blur-[1px] pointer-events-none" />
+                    <div className="relative aspect-video w-full overflow-hidden rounded-xl sm:rounded-2xl border border-white/15 bg-[#11161d] shadow-[0_15px_60px_rgba(0,0,0,.75)]">
                       {!playing ? (
                         <button
                           onClick={() => setPlaying(true)}
@@ -691,13 +715,13 @@ function PublicHome() {
                           data-testid="button-play-lesson"
                         >
                           <div className="absolute inset-0 grid-fade opacity-70" />
-                          <div className="relative flex h-16 w-16 sm:h-24 sm:w-24 items-center justify-center rounded-full border border-white/30 bg-white/[.08] text-white backdrop-blur-md shadow-[0_0_40px_rgba(121,174,244,.3)] transition duration-300 group-hover:scale-105 group-hover:bg-[#75a9ed] group-hover:text-[#081018]">
-                            <Play size={22} fill="currentColor" className="translate-x-0.5 sm:scale-110" />
+                          <div className="relative flex h-14 w-14 sm:h-22 sm:w-22 items-center justify-center rounded-full border border-white/30 bg-white/[.08] text-white backdrop-blur-md shadow-[0_0_30px_rgba(121,174,244,.35)] transition duration-300 group-hover:scale-105 group-hover:bg-[#75a9ed] group-hover:text-[#081018]">
+                            <Play size={20} fill="currentColor" className="translate-x-0.5 sm:scale-110" />
                           </div>
-                          <span className="absolute bottom-3 left-3 sm:bottom-5 sm:left-5 font-code text-[9px] sm:text-[10px] tracking-widest text-[#aabbd0]">
+                          <span className="absolute bottom-2.5 left-2.5 sm:bottom-5 sm:left-5 font-code text-[8px] sm:text-[10px] tracking-widest text-[#aabbd0]">
                             {publicConfig?.data?.video?.title ? publicConfig.data.video.title.toUpperCase() : 'LESSON_01'}
                           </span>
-                          <span className="absolute bottom-3 right-3 sm:bottom-5 sm:right-5 font-code text-[9px] sm:text-[10px] text-[#7c8b9f]">
+                          <span className="absolute bottom-2.5 right-2.5 sm:bottom-5 sm:right-5 font-code text-[8px] sm:text-[10px] text-[#7c8b9f]">
                             SPECTRA FIELD NOTES
                           </span>
                         </button>
@@ -733,24 +757,24 @@ function PublicHome() {
                   </div>
 
                   {/* Key Takeaways Grid */}
-                  <div className="reveal delay-3 mt-6 sm:mt-8 grid w-full max-w-4xl gap-2.5 sm:gap-3 sm:grid-cols-2 text-start">
+                  <div className="reveal delay-3 mt-4 sm:mt-8 grid w-full max-w-4xl gap-2 sm:gap-3 sm:grid-cols-2 text-start">
                     {t.lessonPoints.map((point) => (
-                      <div key={point} className="glass flex items-start gap-3 rounded-xl p-3 sm:p-3.5 text-xs text-[#bbc6d3]">
-                        <Check size={16} className="mt-0.5 shrink-0 text-[#77aaf0]" />
-                        <span>{point}</span>
+                      <div key={point} className="glass flex items-start gap-2.5 sm:gap-3 rounded-xl p-2.5 sm:p-3.5 text-xs text-[#bbc6d3]">
+                        <Check size={15} className="mt-0.5 shrink-0 text-[#77aaf0]" />
+                        <span className="leading-snug">{point}</span>
                       </div>
                     ))}
                   </div>
 
                   {/* Primary Funnel CTAs */}
-                  <div className="reveal delay-3 mt-8 sm:mt-10 flex w-full max-w-md flex-col sm:max-w-none sm:w-auto sm:flex-row items-stretch sm:items-center justify-center gap-3">
+                  <div className="reveal delay-3 mt-6 sm:mt-10 flex w-full max-w-md flex-col sm:max-w-none sm:w-auto sm:flex-row items-stretch sm:items-center justify-center gap-2.5 sm:gap-3">
                     <button
                       onClick={() => scrollTo('consultation')}
-                      className="focus-ring group flex min-h-[48px] items-center justify-center gap-3 rounded-full bg-[#e8edf3] px-7 py-3 text-sm font-bold text-[#090b0e] transition hover:bg-[#a6c9ff] active:scale-[0.98] cursor-pointer"
+                      className="focus-ring group flex min-h-[46px] sm:min-h-[48px] items-center justify-center gap-2.5 rounded-full bg-[#e8edf3] px-6 sm:px-7 py-3 text-xs sm:text-sm font-bold text-[#090b0e] transition hover:bg-[#a6c9ff] active:scale-[0.98] cursor-pointer"
                       data-testid="button-hero-book"
                     >
                       {t.book}
-                      <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+                      <ArrowRight size={15} className="transition-transform group-hover:translate-x-1 rtl:rotate-180 rtl:group-hover:-translate-x-1" />
                     </button>
                     <button
                       onClick={() => scrollTo('capabilities')}
@@ -908,28 +932,28 @@ function PublicHome() {
               <section className="border-y border-white/[.07] bg-[#0b0e12]"><div className="mx-auto grid max-w-[1320px] gap-12 px-5 py-24 sm:px-8 lg:grid-cols-[.7fr_1.3fr] lg:items-end lg:px-12 lg:py-32"><div><span className="eyebrow">{t.proofKicker}</span><h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-6xl">{t.proofTitle}</h2></div><div className="border-l border-[#7197c5]/40 pl-6 sm:pl-10"><div className="mb-6 flex gap-1 text-[#b9d5f7]">{[1,2,3,4,5].map(i => <span key={i} className="h-1.5 w-1.5 rounded-full bg-current" />)}</div><blockquote className="max-w-2xl text-2xl leading-[1.35] tracking-[-.03em] text-[#dbe3ec] sm:text-3xl">“{t.quote}”</blockquote><p className="mt-7 font-code text-[10px] uppercase tracking-widest text-[#7c8b9d]">{t.quoteBy}</p></div></div></section>
 
               {/* Merged Consultation & Interactive Booking Calendar */}
-              <section id="consultation" className="scroll-mt-20 border-y border-white/[.07] bg-[#0a0e13] relative overflow-hidden">
+              <section id="consultation" className="scroll-mt-16 sm:scroll-mt-20 border-y border-white/[.07] bg-[#0a0e13] relative overflow-hidden">
                 <div id="schedule" className="absolute top-0" />
-                <div className="mx-auto max-w-[1320px] px-5 py-24 sm:px-8 lg:px-12 lg:py-32">
-                  <div className="max-w-3xl mb-14">
+                <div className="mx-auto max-w-[1320px] px-3.5 sm:px-8 lg:px-12 py-12 sm:py-24 lg:py-32">
+                  <div className="max-w-3xl mb-8 sm:mb-14">
                     <span className="eyebrow">{t.formKicker}</span>
-                    <h2 className="mt-4 text-4xl font-semibold tracking-[-.055em] text-[#e4eaf2] sm:text-6xl">
+                    <h2 className="mt-2.5 sm:mt-4 text-2xl sm:text-4xl lg:text-5xl font-semibold leading-tight ltr:tracking-[-.04em] rtl:tracking-normal text-[#e4eaf2]">
                       {lang === 'ar' ? 'احجز جلستك الاستراتيجية وشاركنا رؤيتك.' : lang === 'fr' ? 'Réservez votre appel stratégique & décrivez votre projet.' : 'Book your strategy call & share your vision.'}
                     </h2>
-                    <p className="mt-4 max-w-xl text-base text-[#8997a8]">
+                    <p className="mt-2.5 sm:mt-4 max-w-xl text-xs sm:text-base text-[#8997a8] leading-relaxed">
                       {lang === 'ar' ? 'اختر موعداً متاحاً في التقويم وأخبرنا عن تفاصيل مشروعك في خطوة واحدة سلسة. بدون عروض بيعية أو ضغط.' : lang === 'fr' ? 'Choisissez un créneau disponible et décrivez votre projet en une seule étape. Échange ciblé de 30 minutes, sans pression commerciale.' : 'Select an available 30-minute window and tell us about what you’re building in one unified step. No pitch deck, no pressure.'}
                     </p>
                   </div>
 
                   {bookingSuccess && confirmedDetails ? (
-                    <div className="glass mx-auto max-w-2xl rounded-2xl p-8 sm:p-12 text-center">
-                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[#79aaf0]/50 bg-[#4777af]/20 text-[#a9d0ff] shadow-[0_0_40px_rgba(121,174,244,.3)] animate-pulse">
-                        <Check size={32} />
+                    <div className="glass mx-auto max-w-2xl rounded-xl sm:rounded-2xl p-6 sm:p-12 text-center">
+                      <div className="mx-auto flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full border border-[#79aaf0]/50 bg-[#4777af]/20 text-[#a9d0ff] shadow-[0_0_40px_rgba(121,174,244,.3)] animate-pulse">
+                        <Check size={28} />
                       </div>
-                      <h3 className="mt-6 text-3xl font-semibold text-[#e4ecf6]">
+                      <h3 className="mt-5 sm:mt-6 text-2xl sm:text-3xl font-semibold text-[#e4ecf6]">
                         {t.confirmed}
                       </h3>
-                      <p className="mt-3 text-sm text-[#8a98a9]">
+                      <p className="mt-2.5 sm:mt-3 text-xs sm:text-sm text-[#8a98a9]">
                         {lang === 'ar'
                           ? `شكراً ${confirmedDetails.name}. تم حجز جلستك الاستراتيجية الخاصة بنجاح.`
                           : lang === 'fr'
@@ -937,12 +961,12 @@ function PublicHome() {
                           : `Thank you, ${confirmedDetails.name}. Your private 30-minute strategy consultation is reserved.`}
                       </p>
 
-                      <div className="mt-6 inline-flex items-center gap-2 rounded-xl border border-[#75a7ea]/30 bg-[#25426b]/30 px-5 py-3 text-sm text-[#d6e7fc]">
-                        <CalendarDays size={17} className="text-[#88b9f7]" />
+                      <div className="mt-5 sm:mt-6 inline-flex items-center gap-2 rounded-xl border border-[#75a7ea]/30 bg-[#25426b]/30 px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm text-[#d6e7fc]">
+                        <CalendarDays size={16} className="text-[#88b9f7]" />
                         <strong>{confirmedDetails.slot}</strong>
                       </div>
 
-                      <p className="mt-5 text-xs text-[#708093]">
+                      <p className="mt-4 sm:mt-5 text-[11px] sm:text-xs text-[#708093]">
                         {lang === 'ar'
                           ? `تم إرسال دعوة التقويم وملف التحضير إلى ${confirmedDetails.email}`
                           : lang === 'fr'
@@ -960,34 +984,34 @@ function PublicHome() {
                           setClientPhone('');
                           setProjectDescription('');
                         }}
-                        className="mt-8 text-xs text-[#9cc6fb] underline underline-offset-4 cursor-pointer hover:text-white"
+                        className="mt-6 sm:mt-8 text-xs text-[#9cc6fb] underline underline-offset-4 cursor-pointer hover:text-white"
                       >
                         {lang === 'ar' ? 'حجز موعد إضافي أو تعديل' : lang === 'fr' ? 'Réserver un autre créneau' : 'Schedule another slot or modify'}
                       </button>
                     </div>
                   ) : (
-                    <form onSubmit={handleMergedSubmit} className="glass rounded-2xl p-5 sm:p-10 lg:p-12">
-                      <div className="grid gap-8 sm:gap-12 lg:grid-cols-2">
+                    <form onSubmit={handleMergedSubmit} className="glass rounded-xl sm:rounded-2xl p-3.5 sm:p-8 lg:p-12 border border-white/10">
+                      <div className="grid gap-6 sm:gap-10 lg:grid-cols-2">
                         {/* Left Column: Calendar & Free Slots */}
-                        <div className="space-y-5 sm:space-y-6">
-                          <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                        <div className="space-y-4 sm:space-y-6">
+                          <div className="flex items-center justify-between border-b border-white/10 pb-3 sm:pb-4">
                             <div>
-                              <span className="font-code text-[10px] uppercase tracking-widest text-[#7da6d8]">
+                              <span className="font-code text-[9px] sm:text-[10px] uppercase tracking-widest text-[#7da6d8]">
                                 {lang === 'ar' ? 'الخطوة الأولى' : lang === 'fr' ? 'Étape 1' : 'Step 1'}
                               </span>
-                              <h4 className="mt-1 text-base sm:text-lg font-semibold text-[#e1e9f2]">
+                              <h4 className="mt-1 text-sm sm:text-lg font-semibold text-[#e1e9f2]">
                                 {lang === 'ar' ? 'اختر اليوم والوقت المناسب' : lang === 'fr' ? 'Choisissez le jour & l’heure' : 'Choose your consultation slot'}
                               </h4>
                             </div>
-                            <span className="flex items-center gap-1.5 font-code text-[10px] text-[#78899d]">
-                              <Globe2 size={13} className="text-[#6d9fdc]" /> {lang === 'ar' ? 'تلمسان · GMT+1' : lang === 'fr' ? 'Tlemcen · GMT+1' : 'Tlemcen, Algeria · GMT+1'}
+                            <span className="flex items-center gap-1 font-code text-[9px] sm:text-[10px] text-[#78899d]">
+                              <Globe2 size={12} className="text-[#6d9fdc]" /> {lang === 'ar' ? 'تلمسان · GMT+1' : lang === 'fr' ? 'Tlemcen · GMT+1' : 'Tlemcen · GMT+1'}
                             </span>
                           </div>
 
                           {/* Day Selector Chips: Swipeable on mobile, grid on desktop */}
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <span className="block font-code text-[10px] uppercase tracking-wider text-[#8b99aa]">
+                              <span className="block font-code text-[9px] sm:text-[10px] uppercase tracking-wider text-[#8b99aa]">
                                 {lang === 'ar' ? 'الأيام المتاحة' : lang === 'fr' ? 'Jours disponibles' : 'Available business days'}
                               </span>
                               <span className="text-[9px] text-[#6d8095] sm:hidden">
@@ -1007,34 +1031,34 @@ function PublicHome() {
                                 </a>
                               </div>
                             ) : (
-                              <div className="flex sm:grid sm:grid-cols-7 gap-2 overflow-x-auto pb-2 scrollbar-none touch-pan-x -mx-1 px-1">
+                              <div className="flex sm:grid sm:grid-cols-7 gap-1.5 sm:gap-2 overflow-x-auto pb-2 scrollbar-none touch-pan-x -mx-1 px-1">
                                 {availableDays.map((day, idx) => (
                                   <button
                                     key={day.isoDate}
                                     type="button"
                                     onClick={() => setSelectedDayIndex(idx)}
-                                    className={`flex shrink-0 min-w-[76px] sm:min-w-0 min-h-[58px] flex-col items-center justify-center rounded-xl border p-2 transition cursor-pointer active:scale-[0.97] ${
+                                    className={`flex shrink-0 min-w-[64px] sm:min-w-0 min-h-[54px] sm:min-h-[62px] flex-col items-center justify-center rounded-xl border p-1.5 sm:p-2 transition cursor-pointer active:scale-[0.96] ${
                                       selectedDayIndex === idx
-                                        ? 'border-[#79acee] bg-[#2d4d77]/40 text-[#e4f0fe] shadow-[0_0_20px_rgba(110,165,240,.2)] ring-1 ring-[#79acee]'
+                                        ? 'border-[#79acee] bg-[#2d4d77]/50 text-[#e4f0fe] shadow-[0_0_20px_rgba(110,165,240,.25)] ring-1 ring-[#79acee]'
                                         : 'border-white/10 bg-white/[.02] text-[#8492a3] hover:border-white/25 hover:text-white'
                                     }`}
                                   >
-                                    <span className="text-[10px] font-medium uppercase tracking-wider text-[#7e8f9f]">{day.dayName}</span>
-                                    <strong className="mt-0.5 text-base font-semibold">{day.dayNumber}</strong>
-                                    <span className="text-[9px] text-[#6f7e8e]">{day.monthName}</span>
+                                    <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-[#7e8f9f]">{day.dayName}</span>
+                                    <strong className="mt-0.5 text-sm sm:text-base font-bold">{day.dayNumber}</strong>
+                                    <span className="text-[8px] sm:text-[9px] text-[#6f7e8e]">{day.monthName}</span>
                                   </button>
                                 ))}
                               </div>
                             )}
                           </div>
 
-                          {/* Time Slot Picker: 2 columns on mobile, 3 on desktop */}
+                          {/* Time Slot Picker: 3 columns on mobile, clean scrollable */}
                           <div>
-                            <div className="flex items-center justify-between mb-2.5">
-                              <span className="font-code text-[10px] uppercase tracking-wider text-[#8b99aa]">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-code text-[9px] sm:text-[10px] uppercase tracking-wider text-[#8b99aa]">
                                 {lang === 'ar' ? 'الأوقات الشاغرة (30 دقيقة)' : lang === 'fr' ? 'Créneaux libres (30 min)' : 'Available time slots (30 min)'}
                               </span>
-                              <span className="text-[10px] text-[#7198c8]">
+                              <span className="text-[9px] sm:text-[10px] text-[#7198c8]">
                                 {availableSlots.length} {lang === 'ar' ? 'مواعيد حرة' : lang === 'fr' ? 'créneaux libres' : 'free slots'}
                               </span>
                             </div>
@@ -1043,20 +1067,20 @@ function PublicHome() {
                                 {lang === 'ar' ? 'تم حجز كافة مواعيد هذا اليوم. يرجى اختيار يوم آخر.' : lang === 'fr' ? 'Tous les créneaux de ce jour sont réservés. Veuillez choisir un autre jour.' : 'All slots for this day are fully booked. Please select another day.'}
                               </div>
                             ) : (
-                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-1.5 sm:gap-2 max-h-[220px] sm:max-h-[260px] overflow-y-auto pr-1">
                                 {availableSlots.map((slot) => (
                                   <button
                                     key={slot}
                                     type="button"
                                     onClick={() => setSelectedSlotTime(slot)}
-                                    className={`rounded-xl border py-2.5 px-3 min-h-[44px] font-code text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${
+                                    className={`rounded-lg sm:rounded-xl border py-2 px-1.5 sm:px-2 min-h-[38px] sm:min-h-[42px] font-code text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1 active:scale-[0.98] ${
                                       selectedSlotTime === slot
-                                        ? 'border-[#79acee] bg-[#2d4d77]/50 text-[#e4f0fe] shadow-[0_0_15px_rgba(110,165,240,.25)] ring-1 ring-[#79acee]'
+                                        ? 'border-[#79acee] bg-[#2d4d77]/60 text-[#e4f0fe] shadow-[0_0_15px_rgba(110,165,240,.3)] ring-1 ring-[#79acee]'
                                         : 'border-white/10 bg-white/[.02] text-[#8695a6] hover:border-white/25 hover:text-white'
                                     }`}
                                   >
-                                    <Clock3 size={12} className={selectedSlotTime === slot ? 'text-[#84b5f4]' : 'text-[#5d6c7d]'} />
-                                    {slot}
+                                    <Clock3 size={11} className={selectedSlotTime === slot ? 'text-[#84b5f4]' : 'text-[#5d6c7d]'} />
+                                    <span>{slot}</span>
                                   </button>
                                 ))}
                               </div>
@@ -1065,9 +1089,9 @@ function PublicHome() {
 
                           {/* Selected Slot Banner */}
                           {currentDay ? (
-                            <div className="flex items-center gap-3 rounded-xl border border-[#76a6e7]/25 bg-[#172b44]/40 p-3 text-xs text-[#a9cbf4]">
-                              <CalendarDays size={16} className="shrink-0 text-[#79acee]" />
-                              <span className="leading-snug">
+                            <div className="flex items-center gap-2.5 rounded-xl border border-[#76a6e7]/25 bg-[#172b44]/40 p-2.5 sm:p-3 text-xs text-[#a9cbf4]">
+                              <CalendarDays size={15} className="shrink-0 text-[#79acee]" />
+                              <span className="leading-snug text-[11px] sm:text-xs">
                                 <strong>
                                   {lang === 'ar' ? 'الموعد المحدد: ' : lang === 'fr' ? 'Créneau sélectionné : ' : 'Selected reservation: '}
                                 </strong>
@@ -1078,47 +1102,47 @@ function PublicHome() {
                         </div>
 
                         {/* Right Column: Contact & Project Details */}
-                        <div className="space-y-5">
-                          <div className="border-b border-white/10 pb-4">
-                            <span className="font-code text-[10px] uppercase tracking-widest text-[#7da6d8]">
+                        <div className="space-y-4 sm:space-y-5">
+                          <div className="border-b border-white/10 pb-3 sm:pb-4">
+                            <span className="font-code text-[9px] sm:text-[10px] uppercase tracking-widest text-[#7da6d8]">
                               {lang === 'ar' ? 'الخطوة الثانية' : lang === 'fr' ? 'Étape 2' : 'Step 2'}
                             </span>
-                            <h4 className="mt-1 text-base sm:text-lg font-semibold text-[#e1e9f2]">
+                            <h4 className="mt-1 text-sm sm:text-lg font-semibold text-[#e1e9f2]">
                               {lang === 'ar' ? 'بياناتك وتفاصيل المشروع' : lang === 'fr' ? 'Vos coordonnées & votre projet' : 'Your details & project scope'}
                             </h4>
                           </div>
 
-                          <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">
+                              <label className="mb-1 block text-xs font-medium text-[#9aa8b8]">
                                 {t.formFields[0]} *
                               </label>
                               <input
                                 required
                                 value={clientName}
                                 onChange={(e) => setClientName(e.target.value)}
-                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
-                                placeholder="e.g. Maya Laurent"
+                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                                placeholder={lang === 'ar' ? 'مثال: محمد بن علي' : lang === 'fr' ? 'ex. Maya Laurent' : 'e.g. Alex Morgan'}
                                 data-testid="input-name"
                               />
                             </div>
 
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">
+                              <label className="mb-1 block text-xs font-medium text-[#9aa8b8]">
                                 {t.formFields[1]} *
                               </label>
                               <input
                                 required
                                 value={companyName}
                                 onChange={(e) => setCompanyName(e.target.value)}
-                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
-                                placeholder="e.g. Nadir Finance"
+                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                                placeholder={lang === 'ar' ? 'اسم الشركة أو العلامة التجارية' : lang === 'fr' ? 'Nom de l’entreprise' : 'Company or brand'}
                                 data-testid="input-company"
                               />
                             </div>
 
                             <div>
-                              <label className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">
+                              <label className="mb-1 block text-xs font-medium text-[#9aa8b8]">
                                 {t.formFields[2]} *
                               </label>
                               <input
@@ -1126,14 +1150,14 @@ function PublicHome() {
                                 type="email"
                                 value={clientEmail}
                                 onChange={(e) => setClientEmail(e.target.value)}
-                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
-                                placeholder="maya@nadir.finance"
+                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                                placeholder="contact@company.com"
                                 data-testid="input-email"
                               />
                             </div>
 
                             <div>
-                              <label className="mb-1.5 flex items-center justify-between text-xs font-medium text-[#9aa8b8]">
+                              <label className="mb-1 flex items-center justify-between text-xs font-medium text-[#9aa8b8]">
                                 <span>{t.formFields[3]}</span>
                                 <span className="text-[10px] text-[#79aef4] font-code uppercase tracking-wider">
                                   {lang === 'ar' ? 'إجباري' : lang === 'fr' ? 'Requis' : 'Required'}
@@ -1149,7 +1173,7 @@ function PublicHome() {
                                 }}
                                 className={`focus-ring w-full rounded-lg border ${
                                   phoneError ? 'border-[#e27373] bg-[#e27373]/10' : 'border-white/10 bg-white/[.03]'
-                                } px-3.5 py-2.5 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]`}
+                                } px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]`}
                                 placeholder="+213 5... / +33 6..."
                                 data-testid="input-phone"
                               />
@@ -1163,10 +1187,10 @@ function PublicHome() {
 
                           {/* Services Multi-Select */}
                           <div>
-                            <span className="mb-2 block text-xs font-medium text-[#9aa8b8]">
+                            <span className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">
                               {lang === 'ar' ? 'الخدمات التي تهمك' : lang === 'fr' ? 'Services concernés' : 'Services you may need'}
                             </span>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-1.5 sm:gap-2">
                               {t.services.map((service) => {
                                 const isChecked = selectedServices.includes(service);
                                 return (
@@ -1178,7 +1202,7 @@ function PublicHome() {
                                         isChecked ? prev.filter((s) => s !== service) : [...prev, service]
                                       );
                                     }}
-                                    className={`rounded-full border px-3 py-1.5 text-xs transition cursor-pointer ${
+                                    className={`rounded-lg border px-2.5 py-1.5 sm:px-3 sm:py-2 text-[11px] sm:text-xs transition cursor-pointer ${
                                       isChecked
                                         ? 'border-[#76a9ee] bg-[#31527b]/40 text-[#d8e8fc]'
                                         : 'border-white/10 bg-white/[.02] text-[#8695a7] hover:border-white/20'
@@ -1210,13 +1234,13 @@ function PublicHome() {
                                   ? 'Décrivez brièvement vos objectifs, délais ou défis digitaux actuels (optionnel)...'
                                   : 'Briefly describe your objectives, timeline, or current digital bottleneck (optional)...'
                               }
-                              className="focus-ring w-full resize-none rounded-lg border border-white/10 bg-white/[.03] p-3 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                              className="focus-ring w-full resize-none rounded-lg border border-white/10 bg-white/[.03] p-2.5 sm:p-3 text-xs sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
                               data-testid="input-project"
                             />
                           </div>
 
                           {/* Submit Bar */}
-                          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10 pt-4">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 border-t border-white/10 pt-4">
                             <span className="flex items-center gap-2 text-[10px] text-[#718194]">
                               <ShieldCheck size={14} className="text-[#78a8e7]" />
                               {lang === 'ar' ? 'بياناتك مشفرة ولن تتم مشاركتها' : lang === 'fr' ? 'Vos données restent strictement confidentielles' : 'Private consultation · NDA on request'}
@@ -1225,11 +1249,11 @@ function PublicHome() {
                             <button
                               type="submit"
                               disabled={submittingBooking}
-                              className="group flex w-full sm:w-auto min-h-[48px] items-center justify-center gap-2.5 rounded-full bg-[#e7edf4] px-8 py-3.5 text-sm font-bold text-[#080a0d] transition hover:bg-[#a9cbfb] active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                              className="group flex w-full sm:w-auto min-h-[46px] sm:min-h-[48px] items-center justify-center gap-2.5 rounded-full bg-[#e7edf4] px-6 sm:px-8 py-3 sm:py-3.5 text-xs sm:text-sm font-bold text-[#080a0d] transition hover:bg-[#a9cbfb] active:scale-[0.98] cursor-pointer disabled:opacity-50"
                               data-testid="button-submit-consultation"
                             >
                               {submittingBooking ? (
-                                <>Processing...</>
+                                <>{lang === 'ar' ? 'جارٍ تسجيل الحجز...' : lang === 'fr' ? 'Enregistrement...' : 'Processing...'}</>
                               ) : (
                                 <>
                                   {lang === 'ar'
@@ -1237,7 +1261,7 @@ function PublicHome() {
                                     : lang === 'fr'
                                     ? `Confirmer pour ${selectedSlotTime} & Envoyer`
                                     : `Confirm Call for ${selectedSlotTime} & Send`}
-                                  <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
+                                  <ArrowRight size={14} className="transition-transform group-hover:translate-x-1 rtl:rotate-180 rtl:group-hover:-translate-x-1" />
                                 </>
                               )}
                             </button>
