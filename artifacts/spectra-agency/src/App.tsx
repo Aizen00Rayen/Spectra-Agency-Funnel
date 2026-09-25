@@ -1009,10 +1009,10 @@ function PublicHome() {
                       </button>
                     </div>
                   ) : (
-                    <form onSubmit={handleMergedSubmit} className="glass rounded-xl sm:rounded-2xl p-3.5 sm:p-8 lg:p-12 border border-white/10">
+                    <form onSubmit={handleMergedSubmit} className="glass rounded-xl sm:rounded-2xl p-3 sm:p-8 lg:p-12 border border-white/10 max-w-full overflow-hidden">
                       <div className="grid gap-6 sm:gap-10 lg:grid-cols-2">
                         {/* Left Column: Calendar & Free Slots */}
-                        <div className="space-y-4 sm:space-y-6">
+                        <div className="space-y-4 sm:space-y-6 max-w-[360px] sm:max-w-none mx-auto w-full">
                           <div className="flex items-center justify-between border-b border-white/10 pb-3 sm:pb-4">
                             <div>
                               <span className="font-code text-[9px] sm:text-[10px] uppercase tracking-widest text-[#7da6d8]">
@@ -1027,14 +1027,15 @@ function PublicHome() {
                             </span>
                           </div>
 
-                          {/* Day Selector Chips: Swipeable on mobile, grid on desktop */}
+                          {/* Day Selector Chips: 4 days max on phones in 4 equal columns, up to 7 days on desktop */}
                           <div>
                             <div className="flex items-center justify-between mb-2">
                               <span className="block font-code text-[9px] sm:text-[10px] uppercase tracking-wider text-[#8b99aa]">
                                 {lang === 'ar' ? 'الأيام المتاحة' : lang === 'fr' ? 'Jours disponibles' : 'Available business days'}
                               </span>
-                              <span className="text-[9px] text-[#6d8095] sm:hidden">
-                                {lang === 'ar' ? 'اسحب لليمين/اليسار ←' : lang === 'fr' ? 'Glisser ←' : 'Swipe for days →'}
+                              <span className="text-[9px] text-[#7198c8]">
+                                <span className="sm:hidden">{lang === 'ar' ? 'الأيام القادمة' : lang === 'fr' ? 'Prochains jours' : 'Next 4 days'}</span>
+                                <span className="hidden sm:inline">{availableDays.length} {lang === 'ar' ? 'أيام متاحة' : lang === 'fr' ? 'jours disponibles' : 'days available'}</span>
                               </span>
                             </div>
                             {availableDays.length === 0 ? (
@@ -1050,35 +1051,40 @@ function PublicHome() {
                                 </a>
                               </div>
                             ) : (
-                              <div className="flex sm:grid sm:grid-cols-7 gap-1.5 sm:gap-2 overflow-x-auto pb-2 scrollbar-none touch-pan-x -mx-1 px-1">
-                                {availableDays.map((day, idx) => (
+                              <div className="grid grid-cols-4 sm:grid-cols-7 gap-1 sm:gap-2">
+                                {availableDays.slice(0, 7).map((day, idx) => (
                                   <button
                                     key={day.isoDate}
                                     type="button"
                                     onClick={() => setSelectedDayIndex(idx)}
-                                    className={`flex shrink-0 min-w-[64px] sm:min-w-0 min-h-[54px] sm:min-h-[62px] flex-col items-center justify-center rounded-xl border p-1.5 sm:p-2 transition cursor-pointer active:scale-[0.96] ${
+                                    className={`${idx >= 4 ? 'hidden sm:flex' : 'flex'} min-h-[50px] sm:min-h-[62px] flex-col items-center justify-center rounded-lg sm:rounded-xl border p-1 sm:p-2 transition cursor-pointer active:scale-[0.96] ${
                                       selectedDayIndex === idx
-                                        ? 'border-[#79acee] bg-[#2d4d77]/50 text-[#e4f0fe] shadow-[0_0_20px_rgba(110,165,240,.25)] ring-1 ring-[#79acee]'
+                                        ? 'border-[#79acee] bg-[#2d4d77]/50 text-[#e4f0fe] shadow-[0_0_15px_rgba(110,165,240,.25)] ring-1 ring-[#79acee]'
                                         : 'border-white/10 bg-white/[.02] text-[#8492a3] hover:border-white/25 hover:text-white'
                                     }`}
                                   >
-                                    <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-[#7e8f9f]">{day.dayName}</span>
-                                    <strong className="mt-0.5 text-sm sm:text-base font-bold">{day.dayNumber}</strong>
-                                    <span className="text-[8px] sm:text-[9px] text-[#6f7e8e]">{day.monthName}</span>
+                                    <span className="text-[8px] sm:text-[10px] font-medium uppercase tracking-wider text-[#7e8f9f] truncate max-w-full">{day.dayName}</span>
+                                    <strong className="mt-0.5 text-xs sm:text-base font-bold">{day.dayNumber}</strong>
+                                    <span className="text-[7px] sm:text-[9px] text-[#6f7e8e] truncate max-w-full">{day.monthName}</span>
                                   </button>
                                 ))}
                               </div>
                             )}
                           </div>
 
-                          {/* Time Slot Picker: 3 columns on mobile, clean scrollable */}
+                          {/* Time Slot Picker: 4 available times ahead max on phones in 2x2 grid, full list on desktop */}
                           <div>
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-code text-[9px] sm:text-[10px] uppercase tracking-wider text-[#8b99aa]">
                                 {lang === 'ar' ? 'الأوقات الشاغرة (30 دقيقة)' : lang === 'fr' ? 'Créneaux libres (30 min)' : 'Available time slots (30 min)'}
                               </span>
                               <span className="text-[9px] sm:text-[10px] text-[#7198c8]">
-                                {availableSlots.length} {lang === 'ar' ? 'مواعيد حرة' : lang === 'fr' ? 'créneaux libres' : 'free slots'}
+                                <span className="sm:hidden">
+                                  {Math.min(availableSlots.length, 4)} {lang === 'ar' ? 'مواعيد مقبلة' : lang === 'fr' ? 'créneaux' : 'slots'}
+                                </span>
+                                <span className="hidden sm:inline">
+                                  {availableSlots.length} {lang === 'ar' ? 'مواعيد حرة' : lang === 'fr' ? 'créneaux libres' : 'free slots'}
+                                </span>
                               </span>
                             </div>
                             {availableSlots.length === 0 ? (
@@ -1086,13 +1092,13 @@ function PublicHome() {
                                 {lang === 'ar' ? 'تم حجز كافة مواعيد هذا اليوم. يرجى اختيار يوم آخر.' : lang === 'fr' ? 'Tous les créneaux de ce jour sont réservés. Veuillez choisir un autre jour.' : 'All slots for this day are fully booked. Please select another day.'}
                               </div>
                             ) : (
-                              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-1.5 sm:gap-2 max-h-[220px] sm:max-h-[260px] overflow-y-auto pr-1">
-                                {availableSlots.map((slot) => (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-1.5 sm:gap-2">
+                                {availableSlots.map((slot, sIdx) => (
                                   <button
                                     key={slot}
                                     type="button"
                                     onClick={() => setSelectedSlotTime(slot)}
-                                    className={`rounded-lg sm:rounded-xl border py-2 px-1.5 sm:px-2 min-h-[38px] sm:min-h-[42px] font-code text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1 active:scale-[0.98] ${
+                                    className={`${sIdx >= 4 ? 'hidden sm:flex' : 'flex'} rounded-lg sm:rounded-xl border py-2 px-1.5 sm:px-2 min-h-[38px] sm:min-h-[42px] font-code text-xs font-medium transition cursor-pointer items-center justify-center gap-1 active:scale-[0.98] ${
                                       selectedSlotTime === slot
                                         ? 'border-[#79acee] bg-[#2d4d77]/60 text-[#e4f0fe] shadow-[0_0_15px_rgba(110,165,240,.3)] ring-1 ring-[#79acee]'
                                         : 'border-white/10 bg-white/[.02] text-[#8695a6] hover:border-white/25 hover:text-white'
@@ -1121,7 +1127,7 @@ function PublicHome() {
                         </div>
 
                         {/* Right Column: Contact & Project Details */}
-                        <div className="space-y-4 sm:space-y-5">
+                        <div className="space-y-4 sm:space-y-5 max-w-[360px] sm:max-w-none mx-auto w-full">
                           <div className="border-b border-white/10 pb-3 sm:pb-4">
                             <span className="font-code text-[9px] sm:text-[10px] uppercase tracking-widest text-[#7da6d8]">
                               {lang === 'ar' ? 'الخطوة الثانية' : lang === 'fr' ? 'Étape 2' : 'Step 2'}
@@ -1140,7 +1146,7 @@ function PublicHome() {
                                 required
                                 value={clientName}
                                 onChange={(e) => setClientName(e.target.value)}
-                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-base sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 sm:px-3.5 sm:py-2.5 text-sm sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
                                 placeholder={lang === 'ar' ? 'مثال: محمد بن علي' : lang === 'fr' ? 'ex. Maya Laurent' : 'e.g. Alex Morgan'}
                                 data-testid="input-name"
                               />
@@ -1154,7 +1160,7 @@ function PublicHome() {
                                 required
                                 value={companyName}
                                 onChange={(e) => setCompanyName(e.target.value)}
-                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-base sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 sm:px-3.5 sm:py-2.5 text-sm sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
                                 placeholder={lang === 'ar' ? 'اسم الشركة أو العلامة التجارية' : lang === 'fr' ? 'Nom de l’entreprise' : 'Company or brand'}
                                 data-testid="input-company"
                               />
@@ -1169,7 +1175,7 @@ function PublicHome() {
                                 type="email"
                                 value={clientEmail}
                                 onChange={(e) => setClientEmail(e.target.value)}
-                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2.5 text-base sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                                className="focus-ring w-full rounded-lg border border-white/10 bg-white/[.03] px-3 py-2 sm:px-3.5 sm:py-2.5 text-sm sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
                                 placeholder="contact@company.com"
                                 data-testid="input-email"
                               />
@@ -1192,7 +1198,7 @@ function PublicHome() {
                                 }}
                                 className={`focus-ring w-full rounded-lg border ${
                                   phoneError ? 'border-[#e27373] bg-[#e27373]/10' : 'border-white/10 bg-white/[.03]'
-                                } px-3.5 py-2.5 text-base sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]`}
+                                } px-3 py-2 sm:px-3.5 sm:py-2.5 text-sm sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]`}
                                 placeholder="+213 5... / +33 6..."
                                 data-testid="input-phone"
                               />
@@ -1204,12 +1210,12 @@ function PublicHome() {
                             </div>
                           </div>
 
-                          {/* Services Multi-Select */}
+                          {/* Services Multi-Select: 2-column grid on mobile, flex wrap on desktop */}
                           <div>
                             <span className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">
                               {lang === 'ar' ? 'الخدمات التي تهمك' : lang === 'fr' ? 'Services concernés' : 'Services you may need'}
                             </span>
-                            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5 sm:gap-2">
                               {t.services.map((service) => {
                                 const isChecked = selectedServices.includes(service);
                                 return (
@@ -1221,7 +1227,7 @@ function PublicHome() {
                                         isChecked ? prev.filter((s) => s !== service) : [...prev, service]
                                       );
                                     }}
-                                    className={`rounded-lg border px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs transition cursor-pointer select-none shrink-0 active:scale-95 ${
+                                    className={`rounded-lg border px-2 py-2 sm:px-3 sm:py-2 text-[11px] sm:text-xs text-center transition cursor-pointer select-none active:scale-95 flex items-center justify-center ${
                                       isChecked
                                         ? 'border-[#76a9ee] bg-[#31527b]/40 text-[#d8e8fc]'
                                         : 'border-white/10 bg-white/[.02] text-[#8695a7] hover:border-white/20'
@@ -1253,7 +1259,7 @@ function PublicHome() {
                                   ? 'Décrivez brièvement vos objectifs, délais ou défis digitaux actuels (optionnel)...'
                                   : 'Briefly describe your objectives, timeline, or current digital bottleneck (optional)...'
                               }
-                              className="focus-ring w-full resize-none rounded-lg border border-white/10 bg-white/[.03] p-3 text-base sm:text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
+                              className="focus-ring w-full resize-none rounded-lg border border-white/10 bg-white/[.03] p-2.5 sm:p-3 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
                               data-testid="input-project"
                             />
                           </div>
