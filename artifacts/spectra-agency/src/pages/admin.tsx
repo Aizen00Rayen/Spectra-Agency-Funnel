@@ -1554,6 +1554,24 @@ export function AdminAvailability() {
     [rules, t.weekDays]
   );
 
+  const [resetting, setResetting] = useState(false);
+  const handleResetDefaults = async () => {
+    if (!confirm("Restore standard consultation schedule (Sunday–Thursday 09:00–17:00, Saturday 10:00–15:00)?")) {
+      return;
+    }
+    try {
+      setResetting(true);
+      const token = typeof window !== "undefined" ? localStorage.getItem("spectra_admin_token") : null;
+      await fetch(apiUrl("/api/admin/availability/reset-defaults"), {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      client.invalidateQueries({ queryKey: getListAvailabilityRulesQueryKey() });
+    } finally {
+      setResetting(false);
+    }
+  };
+
   return (
     <AdminShell>
       <PageHeader
@@ -1561,9 +1579,20 @@ export function AdminAvailability() {
         title={t.availability.title}
         detail={t.availability.detail}
         action={
-          <span className="admin-timezone-badge">
-            <Globe2 size={14} /> {rules[0]?.timezone || form.timezone}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <button
+              onClick={handleResetDefaults}
+              disabled={resetting}
+              className="admin-button admin-button-secondary"
+              style={{ padding: "6px 12px", fontSize: "11px" }}
+              title="Restore standard business hours (Sun–Thu 09:00–17:00, Sat 10:00–15:00)"
+            >
+              <RefreshCw size={12} className={resetting ? "admin-spin" : ""} /> {resetting ? "Restoring..." : "Restore Standard Hours"}
+            </button>
+            <span className="admin-timezone-badge">
+              <Globe2 size={14} /> {rules[0]?.timezone || form.timezone}
+            </span>
+          </div>
         }
       />
       <div className="admin-availability-grid">

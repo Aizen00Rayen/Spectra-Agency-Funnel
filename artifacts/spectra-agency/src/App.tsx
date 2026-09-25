@@ -318,7 +318,68 @@ function PublicHome() {
       .catch(() => {});
   }, []);
 
+  // Dynamic Public Availability state
+  const [availabilitySlots, setAvailabilitySlots] = useState<{ startsAt: string; endsAt: string; timezone: string }[]>([]);
+  const [loadingAvailability, setLoadingAvailability] = useState(true);
+
+  const fetchAvailability = () => {
+    const now = new Date();
+    const from = now.toISOString().slice(0, 10);
+    const future = new Date(now);
+    future.setDate(future.getDate() + 21);
+    const to = future.toISOString().slice(0, 10);
+
+    fetch(apiUrl(`/api/public/availability?from=${from}&to=${to}`))
+      .then((res) => (res.ok ? res.json() : []))
+      .then((slots) => {
+        if (Array.isArray(slots)) {
+          setAvailabilitySlots(slots);
+        }
+        setLoadingAvailability(false);
+      })
+      .catch((err) => {
+        console.warn('Failed to fetch availability:', err);
+        setLoadingAvailability(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchAvailability();
+  }, []);
+
   const availableDays = useMemo(() => {
+    if (availabilitySlots.length > 0) {
+      const daysMap = new Map<string, { isoDate: string; slots: string[]; dateObj: Date }>();
+      for (const slot of availabilitySlots) {
+        const isoDate = slot.startsAt.slice(0, 10);
+        const timeStr = slot.startsAt.slice(11, 16);
+        if (!daysMap.has(isoDate)) {
+          const [y, m, d] = isoDate.split('-').map(Number);
+          daysMap.set(isoDate, { isoDate, slots: [], dateObj: new Date(y, m - 1, d) });
+        }
+        daysMap.get(isoDate)!.slots.push(timeStr);
+      }
+
+      const locale = lang === 'ar' ? 'ar-DZ' : lang === 'fr' ? 'fr-FR' : 'en-GB';
+      const result = Array.from(daysMap.values()).map((day) => {
+        const dayName = new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(day.dateObj);
+        const dayNumber = day.dateObj.getDate();
+        const monthName = new Intl.DateTimeFormat(locale, { month: 'short' }).format(day.dateObj);
+        return {
+          isoDate: day.isoDate,
+          label: `${dayName} ${dayNumber} ${monthName}`,
+          dayName,
+          dayNumber,
+          monthName,
+          dateObj: day.dateObj,
+          slots: Array.from(new Set(day.slots)).sort(),
+        };
+      });
+
+      return result.slice(0, 7);
+    }
+
+    // Default business days (Sunday to Thursday in Algeria)
     const days = [];
     const now = new Date();
     const current = new Date(now);
@@ -326,11 +387,12 @@ function PublicHome() {
 
     while (days.length < 6) {
       const dayOfWeek = current.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      if (dayOfWeek !== 5) {
         const isoDate = current.toISOString().slice(0, 10);
-        const dayName = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-DZ' : lang === 'fr' ? 'fr-FR' : 'en-GB', { weekday: 'short' }).format(current);
+        const locale = lang === 'ar' ? 'ar-DZ' : lang === 'fr' ? 'fr-FR' : 'en-GB';
+        const dayName = new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(current);
         const dayNumber = current.getDate();
-        const monthName = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-DZ' : lang === 'fr' ? 'fr-FR' : 'en-GB', { month: 'short' }).format(current);
+        const monthName = new Intl.DateTimeFormat(locale, { month: 'short' }).format(current);
         days.push({
           isoDate,
           label: `${dayName} ${dayNumber} ${monthName}`,
@@ -338,14 +400,24 @@ function PublicHome() {
           dayNumber,
           monthName,
           dateObj: new Date(current),
+          slots: ['09:00', '10:30', '13:00', '14:30', '16:00', '17:30'],
         });
       }
       current.setDate(current.getDate() + 1);
     }
     return days;
-  }, [lang]);
+  }, [availabilitySlots, lang]);
 
-  const availableSlots = ['09:00', '10:30', '13:00', '14:30', '16:00', '17:30'];
+  const currentDay = availableDays[selectedDayIndex] || availableDays[0];
+  const availableSlots = useMemo(() => {
+    return currentDay?.slots || ['09:00', '10:30', '13:00', '14:30', '16:00', '17:30'];
+  }, [currentDay]);
+
+  useEffect(() => {
+    if (availableSlots.length > 0 && !availableSlots.includes(selectedSlotTime)) {
+      setSelectedSlotTime(availableSlots[0]);
+    }
+  }, [availableSlots, selectedSlotTime]);
 
   const scrollTo = (id: string) => {
     setMenuOpen(false);
@@ -494,6 +566,7 @@ function PublicHome() {
         slot: slotLabel || `${currentDay?.label || 'Upcoming week'} · 30 min`,
       });
       setBookingSuccess(true);
+      fetchAvailability();
     } catch (err: any) {
       console.error(err);
       alert(err?.message || (lang === 'ar' ? 'تعذر إتمام الحجز، يرجى المحاولة مرة أخرى.' : lang === 'fr' ? 'Impossible de finaliser la réservation. Veuillez réessayer.' : 'Could not complete booking. Please try again.'));
@@ -921,24 +994,38 @@ function PublicHome() {
                                 {lang === 'ar' ? 'اسحب لليمين/اليسار ←' : lang === 'fr' ? 'Glisser ←' : 'Swipe for days →'}
                               </span>
                             </div>
-                            <div className="flex sm:grid sm:grid-cols-6 gap-2 overflow-x-auto pb-2 scrollbar-none touch-pan-x -mx-1 px-1">
-                              {availableDays.map((day, idx) => (
-                                <button
-                                  key={day.isoDate}
-                                  type="button"
-                                  onClick={() => setSelectedDayIndex(idx)}
-                                  className={`flex shrink-0 min-w-[76px] sm:min-w-0 min-h-[58px] flex-col items-center justify-center rounded-xl border p-2 transition cursor-pointer active:scale-[0.97] ${
-                                    selectedDayIndex === idx
-                                      ? 'border-[#79acee] bg-[#2d4d77]/40 text-[#e4f0fe] shadow-[0_0_20px_rgba(110,165,240,.2)] ring-1 ring-[#79acee]'
-                                      : 'border-white/10 bg-white/[.02] text-[#8492a3] hover:border-white/25 hover:text-white'
-                                  }`}
+                            {availableDays.length === 0 ? (
+                              <div className="rounded-xl border border-white/10 bg-white/[.02] p-4 text-center text-xs text-[#90a2b6]">
+                                <p>{lang === 'ar' ? 'لا توجد مواعيد شاغرة حالياً في التقويم.' : lang === 'fr' ? 'Aucun créneau disponible pour le moment.' : 'No open consultation slots on the calendar currently.'}</p>
+                                <a
+                                  href="https://wa.me/213556614740"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="mt-3 inline-flex items-center gap-1.5 text-[#79acee] underline underline-offset-4"
                                 >
-                                  <span className="text-[10px] font-medium uppercase tracking-wider text-[#7e8f9f]">{day.dayName}</span>
-                                  <strong className="mt-0.5 text-base font-semibold">{day.dayNumber}</strong>
-                                  <span className="text-[9px] text-[#6f7e8e]">{day.monthName}</span>
-                                </button>
-                              ))}
-                            </div>
+                                  {lang === 'ar' ? 'تواصل معنا مباشرة عبر واتساب' : lang === 'fr' ? 'Contactez-nous sur WhatsApp' : 'Contact our team directly on WhatsApp'} ↗
+                                </a>
+                              </div>
+                            ) : (
+                              <div className="flex sm:grid sm:grid-cols-7 gap-2 overflow-x-auto pb-2 scrollbar-none touch-pan-x -mx-1 px-1">
+                                {availableDays.map((day, idx) => (
+                                  <button
+                                    key={day.isoDate}
+                                    type="button"
+                                    onClick={() => setSelectedDayIndex(idx)}
+                                    className={`flex shrink-0 min-w-[76px] sm:min-w-0 min-h-[58px] flex-col items-center justify-center rounded-xl border p-2 transition cursor-pointer active:scale-[0.97] ${
+                                      selectedDayIndex === idx
+                                        ? 'border-[#79acee] bg-[#2d4d77]/40 text-[#e4f0fe] shadow-[0_0_20px_rgba(110,165,240,.2)] ring-1 ring-[#79acee]'
+                                        : 'border-white/10 bg-white/[.02] text-[#8492a3] hover:border-white/25 hover:text-white'
+                                    }`}
+                                  >
+                                    <span className="text-[10px] font-medium uppercase tracking-wider text-[#7e8f9f]">{day.dayName}</span>
+                                    <strong className="mt-0.5 text-base font-semibold">{day.dayNumber}</strong>
+                                    <span className="text-[9px] text-[#6f7e8e]">{day.monthName}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
 
                           {/* Time Slot Picker: 2 columns on mobile, 3 on desktop */}
@@ -951,35 +1038,43 @@ function PublicHome() {
                                 {availableSlots.length} {lang === 'ar' ? 'مواعيد حرة' : lang === 'fr' ? 'créneaux libres' : 'free slots'}
                               </span>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                              {availableSlots.map((slot) => (
-                                <button
-                                  key={slot}
-                                  type="button"
-                                  onClick={() => setSelectedSlotTime(slot)}
-                                  className={`rounded-xl border py-2.5 px-3 min-h-[44px] font-code text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${
-                                    selectedSlotTime === slot
-                                      ? 'border-[#79acee] bg-[#2d4d77]/50 text-[#e4f0fe] shadow-[0_0_15px_rgba(110,165,240,.25)] ring-1 ring-[#79acee]'
-                                      : 'border-white/10 bg-white/[.02] text-[#8695a6] hover:border-white/25 hover:text-white'
-                                  }`}
-                                >
-                                  <Clock3 size={12} className={selectedSlotTime === slot ? 'text-[#84b5f4]' : 'text-[#5d6c7d]'} />
-                                  {slot}
-                                </button>
-                              ))}
-                            </div>
+                            {availableSlots.length === 0 ? (
+                              <div className="rounded-xl border border-white/10 bg-white/[.02] p-3 text-center text-xs text-[#8a99aa]">
+                                {lang === 'ar' ? 'تم حجز كافة مواعيد هذا اليوم. يرجى اختيار يوم آخر.' : lang === 'fr' ? 'Tous les créneaux de ce jour sont réservés. Veuillez choisir un autre jour.' : 'All slots for this day are fully booked. Please select another day.'}
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {availableSlots.map((slot) => (
+                                  <button
+                                    key={slot}
+                                    type="button"
+                                    onClick={() => setSelectedSlotTime(slot)}
+                                    className={`rounded-xl border py-2.5 px-3 min-h-[44px] font-code text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${
+                                      selectedSlotTime === slot
+                                        ? 'border-[#79acee] bg-[#2d4d77]/50 text-[#e4f0fe] shadow-[0_0_15px_rgba(110,165,240,.25)] ring-1 ring-[#79acee]'
+                                        : 'border-white/10 bg-white/[.02] text-[#8695a6] hover:border-white/25 hover:text-white'
+                                    }`}
+                                  >
+                                    <Clock3 size={12} className={selectedSlotTime === slot ? 'text-[#84b5f4]' : 'text-[#5d6c7d]'} />
+                                    {slot}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
 
                           {/* Selected Slot Banner */}
-                          <div className="flex items-center gap-3 rounded-xl border border-[#76a6e7]/25 bg-[#172b44]/40 p-3 text-xs text-[#a9cbf4]">
-                            <CalendarDays size={16} className="shrink-0 text-[#79acee]" />
-                            <span className="leading-snug">
-                              <strong>
-                                {lang === 'ar' ? 'الموعد المحدد: ' : lang === 'fr' ? 'Créneau sélectionné : ' : 'Selected reservation: '}
-                              </strong>
-                              {availableDays[selectedDayIndex]?.label} · {selectedSlotTime} · GMT+1 ({lang === 'ar' ? 'تلمسان' : 'Tlemcen'})
-                            </span>
-                          </div>
+                          {currentDay ? (
+                            <div className="flex items-center gap-3 rounded-xl border border-[#76a6e7]/25 bg-[#172b44]/40 p-3 text-xs text-[#a9cbf4]">
+                              <CalendarDays size={16} className="shrink-0 text-[#79acee]" />
+                              <span className="leading-snug">
+                                <strong>
+                                  {lang === 'ar' ? 'الموعد المحدد: ' : lang === 'fr' ? 'Créneau sélectionné : ' : 'Selected reservation: '}
+                                </strong>
+                                {currentDay.label} · {selectedSlotTime || availableSlots[0] || '09:00'} · GMT+1 ({lang === 'ar' ? 'تلمسان' : 'Tlemcen'})
+                              </span>
+                            </div>
+                          ) : null}
                         </div>
 
                         {/* Right Column: Contact & Project Details */}
@@ -1096,17 +1191,25 @@ function PublicHome() {
                             </div>
                           </div>
 
-                          {/* Project description textarea */}
+                          {/* Project description textarea (Optional) */}
                           <div>
-                            <label className="mb-1.5 block text-xs font-medium text-[#9aa8b8]">
-                              {t.formFields[4]} *
+                            <label className="mb-1.5 flex items-center justify-between text-xs font-medium text-[#9aa8b8]">
+                              <span>{t.formFields[4]}</span>
+                              <span className="text-[10px] text-[#78899d] font-code">
+                                {lang === 'ar' ? '(اختياري)' : lang === 'fr' ? '(optionnel)' : '(optional)'}
+                              </span>
                             </label>
                             <textarea
-                              required
                               rows={3}
                               value={projectDescription}
                               onChange={(e) => setProjectDescription(e.target.value)}
-                              placeholder="Briefly describe your objectives, timeline, or current digital bottleneck..."
+                              placeholder={
+                                lang === 'ar'
+                                  ? 'صف باختصار أهدافك، الجدول الزمني، أو التحديات الرقمية الحالية (اختياري)...'
+                                  : lang === 'fr'
+                                  ? 'Décrivez brièvement vos objectifs, délais ou défis digitaux actuels (optionnel)...'
+                                  : 'Briefly describe your objectives, timeline, or current digital bottleneck (optional)...'
+                              }
                               className="focus-ring w-full resize-none rounded-lg border border-white/10 bg-white/[.03] p-3 text-sm text-[#e4ebf3] outline-none transition focus:border-[#79a9eb]"
                               data-testid="input-project"
                             />

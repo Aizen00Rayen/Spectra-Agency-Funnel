@@ -259,7 +259,7 @@ export const adminCopies: Record<AdminLang, AdminTranslations> = {
       [BookingStatus.completed]: "Completed",
       [BookingStatus.no_show]: "No show",
     },
-    weekDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    weekDays: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
     overview: {
       eyebrow: "Workspace overview",
       title: "Good morning, make the next move.",
@@ -478,7 +478,7 @@ export const adminCopies: Record<AdminLang, AdminTranslations> = {
       [BookingStatus.completed]: "Terminé",
       [BookingStatus.no_show]: "Absent",
     },
-    weekDays: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
+    weekDays: ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"],
     overview: {
       eyebrow: "Aperçu du studio",
       title: "Bonjour, passez à l’action.",
@@ -697,7 +697,7 @@ export const adminCopies: Record<AdminLang, AdminTranslations> = {
       [BookingStatus.completed]: "مكتمل",
       [BookingStatus.no_show]: "لم يحضر",
     },
-    weekDays: ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"],
+    weekDays: ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
     overview: {
       eyebrow: "نظرة عامة على الاستوديو",
       title: "صباح الخير، لنبدأ الخطوة التالية.",

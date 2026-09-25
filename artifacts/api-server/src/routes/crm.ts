@@ -301,10 +301,43 @@ router.get("/public/portfolio", async (_req, res) => {
   res.json(items);
 });
 
+async function ensureAvailabilityInitialized(force = false) {
+  try {
+    const existing = await db.select({ id: availabilityRulesTable.id }).from(availabilityRulesTable);
+    if (existing.length === 0 || force) {
+      if (force && existing.length > 0) {
+        await db.delete(availabilityRulesTable);
+      }
+      await db.insert(availabilityRulesTable).values([
+        // Sunday (0) through Thursday (4) - standard Algerian/MENA business week
+        { weekday: 0, startTime: "09:00", endTime: "17:00", timezone: "Africa/Algiers", enabled: true },
+        { weekday: 1, startTime: "09:00", endTime: "17:00", timezone: "Africa/Algiers", enabled: true },
+        { weekday: 2, startTime: "09:00", endTime: "17:00", timezone: "Africa/Algiers", enabled: true },
+        { weekday: 3, startTime: "09:00", endTime: "17:00", timezone: "Africa/Algiers", enabled: true },
+        { weekday: 4, startTime: "09:00", endTime: "17:00", timezone: "Africa/Algiers", enabled: true },
+        { weekday: 6, startTime: "10:00", endTime: "15:00", timezone: "Africa/Algiers", enabled: true },
+      ]);
+    }
+  } catch (err) {
+    console.error("Error ensuring availability initialized:", err);
+  }
+}
+
 router.get("/public/availability", async (req, res) => {
-  const input = GetPublicAvailabilityQueryParams.parse(req.query);
-  const slots = await buildAvailability(input.from, input.to);
-  res.json(GetPublicAvailabilityResponse.parse(slots));
+  await ensureAvailabilityInitialized();
+  const fromQuery = typeof req.query.from === "string" ? req.query.from : undefined;
+  const toQuery = typeof req.query.to === "string" ? req.query.to : undefined;
+
+  const from = fromQuery || new Date().toISOString().slice(0, 10);
+  let to = toQuery;
+  if (!to) {
+    const future = new Date();
+    future.setDate(future.getDate() + 21);
+    to = future.toISOString().slice(0, 10);
+  }
+
+  const slots = await buildAvailability(from, to);
+  res.json(slots);
 });
 
 router.post("/bookings", leadSubmissionLimiter, async (req, res) => {
@@ -656,6 +689,13 @@ router.patch("/admin/video/:id/publish", async (req, res) => {
 });
 
 router.get("/admin/availability", async (_req, res) => {
+  await ensureAvailabilityInitialized();
+  const rules = await db.select().from(availabilityRulesTable).orderBy(availabilityRulesTable.weekday);
+  res.json(ListAvailabilityRulesResponse.parse(rules.map(serializeRule)));
+});
+
+router.post("/admin/availability/reset-defaults", async (_req, res) => {
+  await ensureAvailabilityInitialized(true);
   const rules = await db.select().from(availabilityRulesTable).orderBy(availabilityRulesTable.weekday);
   res.json(ListAvailabilityRulesResponse.parse(rules.map(serializeRule)));
 });
