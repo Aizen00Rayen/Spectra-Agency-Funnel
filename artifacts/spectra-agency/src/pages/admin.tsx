@@ -1304,7 +1304,7 @@ export function AdminVideo() {
                     src={currentDriveEmbed}
                     title={current.title}
                     style={{ width: "100%", height: "260px", border: "none", display: "block" }}
-                    allow="autoplay; fullscreen"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                   />
                 ) : (

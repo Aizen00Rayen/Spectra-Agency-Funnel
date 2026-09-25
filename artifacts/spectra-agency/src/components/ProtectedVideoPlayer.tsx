@@ -278,7 +278,7 @@ export function ProtectedVideoPlayer({
           src={driveEmbedUrl!}
           title={title}
           className="h-full w-full border-0"
-          allow="autoplay; fullscreen"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
           onLoad={() => setIsLoading(false)}
         />
