@@ -1208,6 +1208,9 @@ export function AdminVideo() {
   const [message, setMessage] = useState("");
   const accept = "video/mp4,video/webm,video/quicktime";
 
+  const [uploadPercent, setUploadPercent] = useState<number>(0);
+  const [uploadLoadedMb, setUploadLoadedMb] = useState<string>("");
+
   const detectedDriveEmbed = useMemo(() => {
     return extractGoogleDriveEmbedUrl(linkUrl);
   }, [linkUrl]);
@@ -1254,19 +1257,65 @@ export function AdminVideo() {
     try {
       setMessage("");
       setProgress("requesting");
-      const contentType = file.type as typeof UploadRequestContentType[keyof typeof UploadRequestContentType];
-      const response = await requestUpload.mutateAsync({ data: { name: file.name, size: file.size, contentType } });
+      setUploadPercent(0);
+      setUploadLoadedMb("");
+
+      const validTypes = ["video/mp4", "video/webm", "video/quicktime"];
+      const resolvedContentType = file.type && validTypes.includes(file.type)
+        ? (file.type as typeof UploadRequestContentType[keyof typeof UploadRequestContentType])
+        : "video/mp4";
+
+      const response = await requestUpload.mutateAsync({ data: { name: file.name, size: file.size, contentType: resolvedContentType } });
       setProgress("uploading");
-      const direct = await fetch(response.uploadURL, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-      if (!direct.ok) throw new Error("Direct upload failed");
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", response.uploadURL);
+        xhr.setRequestHeader("Content-Type", resolvedContentType);
+
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) {
+            const percent = Math.round((evt.loaded / evt.total) * 100);
+            setUploadPercent(percent);
+            const loadedMb = (evt.loaded / (1024 * 1024)).toFixed(1);
+            const totalMb = (evt.total / (1024 * 1024)).toFixed(1);
+            setUploadLoadedMb(`${loadedMb} / ${totalMb} MB`);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else if (xhr.status === 413) {
+            reject(new Error("File rejected (413 Payload Too Large). The Nginx client_max_body_size on your VPS needs to be set to 500M."));
+          } else if (xhr.status === 504 || xhr.status === 502) {
+            reject(new Error(`Upload timed out (${xhr.status}). Nginx proxy_read_timeout on your VPS needs to be increased.`));
+          } else {
+            reject(new Error(`Upload failed with server HTTP status ${xhr.status}`));
+          }
+        };
+
+        xhr.onerror = () => {
+          reject(new Error("Network connection error during file upload. Check your internet connection or server Nginx settings."));
+        };
+
+        xhr.ontimeout = () => {
+          reject(new Error("Upload timed out. The file took too long to transfer."));
+        };
+
+        xhr.send(file);
+      });
+
       setProgress("saving");
       await createAsset.mutateAsync({
-        data: { title: title.trim(), objectPath: response.objectPath, mimeType: file.type, sizeBytes: file.size },
+        data: { title: title.trim(), objectPath: response.objectPath, mimeType: resolvedContentType, sizeBytes: file.size },
       });
       setProgress("success");
       setMessage(t.video.uploadSuccess);
       setFile(null);
       setTitle("");
+      setUploadPercent(0);
+      setUploadLoadedMb("");
       client.invalidateQueries({ queryKey: getGetAdminVideoQueryKey() });
       client.invalidateQueries({ queryKey: getGetAdminSummaryQueryKey() });
     } catch (err: any) {
@@ -1491,13 +1540,23 @@ export function AdminVideo() {
               {progress !== "idle" && progress !== "error" && progress !== "success" && (
                 <div className="admin-upload-status">
                   <span className="admin-upload-line">
-                    <i style={{ width: progress === "requesting" ? "25%" : progress === "uploading" ? "65%" : "90%" }} />
+                    <i
+                      style={{
+                        width:
+                          progress === "requesting"
+                            ? "15%"
+                            : progress === "uploading"
+                            ? `${Math.max(15, uploadPercent)}%`
+                            : "95%",
+                        transition: "width 0.3s ease",
+                      }}
+                    />
                   </span>
                   <small>
                     {progress === "requesting"
                       ? t.video.requestingUpload
                       : progress === "uploading"
-                      ? t.video.uploadingDirect
+                      ? `${t.video.uploadingDirect} ${uploadPercent > 0 ? `${uploadPercent}%` : ""} ${uploadLoadedMb ? `(${uploadLoadedMb})` : ""}`
                       : t.video.savingMetadata}
                   </small>
                 </div>

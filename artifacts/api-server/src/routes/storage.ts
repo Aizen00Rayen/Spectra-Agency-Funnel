@@ -82,6 +82,9 @@ router.post("/storage/uploads/request-url", requireAdmin, async (req, res) => {
 });
 
 router.put("/storage/uploads/:fileId", async (req, res) => {
+  // Allow up to 15 minutes for large video transfers (e.g. 300MB+)
+  req.setTimeout(15 * 60 * 1000);
+
   const fileId = path.basename(req.params.fileId);
 
   // Strict alphanumeric filename check to prevent path traversal or special char injection
