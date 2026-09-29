@@ -74,37 +74,61 @@ export const sanitizeMiddleware: RequestHandler = (req: Request, _res: Response,
 };
 
 /**
- * Global API rate limiter: 150 requests per minute per IP.
+ * Safely resolves real client IP behind Cloudflare, Nginx, or Docker reverse proxies.
+ */
+export function getClientIp(req: Request): string {
+  const cfIp = req.headers["cf-connecting-ip"];
+  if (typeof cfIp === "string" && cfIp.trim()) return cfIp.trim();
+
+  const realIp = req.headers["x-real-ip"];
+  if (typeof realIp === "string" && realIp.trim()) return realIp.trim();
+
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string" && forwarded.trim()) {
+    return forwarded.split(",")[0].trim();
+  }
+
+  return req.ip || req.socket.remoteAddress || "127.0.0.1";
+}
+
+/**
+ * Global API rate limiter: 300 requests per minute per IP.
  */
 export const apiRateLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 150,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => getClientIp(req as Request),
+  validate: { trustProxy: false },
   message: { error: "Too many requests. Please slow down and try again in a moment." },
 });
 
 /**
- * Strict Form & Lead Submission rate limiter:
- * Limits visitors to 10 submissions per 10 minutes to prevent spam/flooding.
+ * Form & Lead Submission rate limiter:
+ * Generous limits ensuring real prospects and tests are never blocked (60 submissions per 15 mins).
  */
 export const leadSubmissionLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 10,
+  windowMs: 15 * 60 * 1000,
+  max: 60,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => getClientIp(req as Request),
+  validate: { trustProxy: false },
   message: { error: "Too many consultation requests submitted. Please wait a few minutes before trying again." },
 });
 
 /**
  * Admin Login Brute Force Protection:
- * Limits login attempts to 8 per 15 minutes per IP.
+ * Limits login attempts to 15 per 15 minutes per IP.
  */
 export const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 8,
+  max: 15,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => getClientIp(req as Request),
+  validate: { trustProxy: false },
   message: { error: "Too many failed login attempts. Account temporarily locked for 15 minutes." },
 });
 

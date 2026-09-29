@@ -340,7 +340,7 @@ router.get("/public/availability", async (req, res) => {
   res.json(slots);
 });
 
-router.post("/bookings", leadSubmissionLimiter, async (req, res) => {
+router.post("/bookings", async (req, res) => {
   try {
     const input = CreateBookingBody.parse(req.body);
     const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, input.leadId)).limit(1);

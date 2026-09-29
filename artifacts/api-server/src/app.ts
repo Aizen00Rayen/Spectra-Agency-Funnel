@@ -21,6 +21,9 @@ import {
 
 const app: Express = express();
 
+// Trust reverse proxy (Nginx / Cloudflare / Docker bridge) for accurate client IP resolution
+app.set("trust proxy", true);
+
 // Disable technology disclosure header
 app.disable("x-powered-by");
 
