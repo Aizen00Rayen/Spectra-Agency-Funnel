@@ -122,6 +122,7 @@ export const securityHeadersMiddleware = helmet({
         "https://*.clerk.com",
         "https://*.clerk.dev",
         "https://challenges.cloudflare.com",
+        "https://connect.facebook.net",
       ],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
@@ -138,6 +139,7 @@ export const securityHeadersMiddleware = helmet({
         "https://*.google.com",
         "https://*.googleusercontent.com",
         "https://*.ytimg.com",
+        "https://www.facebook.com",
       ],
       mediaSrc: [
         "'self'",
@@ -156,6 +158,8 @@ export const securityHeadersMiddleware = helmet({
         "https://*.google.com",
         "https://*.googleusercontent.com",
         "https://*.googlevideo.com",
+        "https://connect.facebook.net",
+        "https://www.facebook.com",
       ],
       frameSrc: [
         "'self'",

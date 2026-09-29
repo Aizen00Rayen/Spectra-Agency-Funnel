@@ -14,6 +14,7 @@ import { ProtectedVideoPlayer } from '@/components/ProtectedVideoPlayer';
 import { AccordionGallery } from '@/components/AccordionGallery';
 import { setAuthTokenGetter, useGetPublicConfig } from '@workspace/api-client-react';
 import { apiUrl } from '@/lib/api';
+import { trackMetaPixel } from '@/lib/meta-pixel';
 import {
   ArrowDownRight, ArrowRight, ArrowUpRight, Calendar, CalendarDays, Check, ChevronDown,
   Clock3, ExternalLink, Globe2, Lock, Mail, Menu, MessageCircle, MessageSquareQuote, Play, RefreshCw, ShieldCheck, Sparkles, User, Video, Volume2, VolumeX, X, Zap,
@@ -599,6 +600,15 @@ function PublicHome() {
       });
       setBookingSuccess(true);
       fetchAvailability();
+
+      // Fire Meta Pixel conversion tracking for Facebook / Instagram Ads
+      trackMetaPixel('Lead', {
+        content_name: 'Consultation Form Booking',
+        content_category: services.join(', '),
+      });
+      trackMetaPixel('Schedule', {
+        content_name: slotLabel || 'Strategic Call',
+      });
     } catch (err: any) {
       console.error(err);
       alert(err?.message || (lang === 'ar' ? 'تعذر إتمام الحجز، يرجى المحاولة مرة أخرى.' : lang === 'fr' ? 'Impossible de finaliser la réservation. Veuillez réessayer.' : 'Could not complete booking. Please try again.'));
@@ -729,7 +739,13 @@ function PublicHome() {
                     <div className="relative aspect-video w-full overflow-hidden rounded-xl sm:rounded-2xl border border-white/15 bg-[#11161d] shadow-[0_15px_60px_rgba(0,0,0,.75)]">
                       {!playing ? (
                         <button
-                          onClick={() => setPlaying(true)}
+                          onClick={() => {
+                            setPlaying(true);
+                            trackMetaPixel('ViewContent', {
+                              content_name: publicConfig?.data?.video?.title || 'SPECTRA VSL Lesson',
+                              content_type: 'video',
+                            });
+                          }}
                           className="group absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_60%_35%,rgba(83,129,182,.3),transparent_36%),linear-gradient(135deg,#141b24,#0b0e13)] cursor-pointer"
                           data-testid="button-play-lesson"
                         >
