@@ -609,6 +609,10 @@ function PublicHome() {
       trackMetaPixel('Schedule', {
         content_name: slotLabel || 'Strategic Call',
       });
+      trackMetaPixel('AddToCart', {
+        content_name: 'Consultation Form Booking',
+        content_category: services.join(', '),
+      });
     } catch (err: any) {
       console.error(err);
       alert(err?.message || (lang === 'ar' ? 'تعذر إتمام الحجز، يرجى المحاولة مرة أخرى.' : lang === 'fr' ? 'Impossible de finaliser la réservation. Veuillez réessayer.' : 'Could not complete booking. Please try again.'));
